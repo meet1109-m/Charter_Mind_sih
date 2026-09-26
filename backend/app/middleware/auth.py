@@ -87,9 +87,12 @@ async def get_current_user(
 
     email = decoded_token.get("email") or f"{uid}@maritime.local"
     name = decoded_token.get("name")
+    avatar_url = decoded_token.get("picture") or decoded_token.get("photo_url")
     # Enforce database column width limits
     uid = str(uid)[:128]
     email = str(email)[:254]
+    if avatar_url:
+        avatar_url = str(avatar_url)[:512]
 
     # Query PostgreSQL database for user
     stmt = select(User).where(User.firebase_uid == uid)

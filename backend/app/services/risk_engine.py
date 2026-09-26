@@ -121,19 +121,20 @@ def calculate_risk_scores(
         freight_hedge_status = "Unhedged"
 
     # Voyage month
-    voyage_month = 10
-    if hasattr(cargo, "loading_window_start") and cargo.loading_window_start:
-        voyage_month = cargo.loading_window_start.month
-    elif hasattr(cargo, "laycan_start") and cargo.laycan_start:
-        if isinstance(cargo.laycan_start, str) and "-" in cargo.laycan_start:
+    voyage_month = datetime.now().month
+    dt_candidate = getattr(cargo, "loading_window_start", None) or getattr(cargo, "laycan_start", None)
+    if dt_candidate:
+        if hasattr(dt_candidate, "month"):
+            voyage_month = int(dt_candidate.month)
+        elif isinstance(dt_candidate, str) and dt_candidate.strip():
             try:
-                voyage_month = int(cargo.laycan_start.split("-")[1])
+                clean_dt = dt_candidate.strip().split("T")[0]
+                if "-" in clean_dt:
+                    parts = clean_dt.split("-")
+                    if len(parts) >= 2:
+                        voyage_month = int(parts[1])
             except (ValueError, IndexError):
                 voyage_month = datetime.now().month
-        elif hasattr(cargo.laycan_start, "month"):
-            voyage_month = cargo.laycan_start.month
-    else:
-        voyage_month = datetime.now().month
 
     # 1. Market Volatility Signal & Market Risk
     if overrides and overrides.forecast_volatility_signal is not None:

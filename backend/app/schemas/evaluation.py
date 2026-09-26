@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -14,11 +15,11 @@ class VoyageEvaluationRequest(BaseModel):
     cargo_quantity_mt: float = Field(75000.0, description="Cargo parcel quantity in Metric Tons")
     origin_country: str = Field("Indonesia", description="Loading origin basin")
     destination_port: str = Field("Paradip", description="Destination discharge port")
-    required_delivery_date: Optional[str] = None
-    loading_window_start: Optional[str] = None
-    loading_window_end: Optional[str] = None
-    discharge_window_start: Optional[str] = None
-    discharge_window_end: Optional[str] = None
+    required_delivery_date: Optional[date] = None
+    loading_window_start: Optional[date] = None
+    loading_window_end: Optional[date] = None
+    discharge_window_start: Optional[date] = None
+    discharge_window_end: Optional[date] = None
     preferred_vessel_type: Optional[str] = Field("Let AI decide", description="Preferred vessel class or 'Let AI decide'")
     priority: Optional[str] = Field("Balanced", description="Optimization priority: Balanced, Lowest cost, Fastest delivery, Lowest risk")
     max_acceptable_freight: Optional[float] = None

@@ -1,3 +1,4 @@
+from datetime import date
 import uuid
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
@@ -102,11 +103,24 @@ class EvaluatedCargo:
         self.cargo_quantity_mt = Decimal(str(req.cargo_quantity_mt))
         self.origin_country = req.origin_country or "Indonesia"
         self.destination_port = req.destination_port or "Paradip"
-        self.required_delivery_date = req.required_delivery_date
-        self.loading_window_start = req.loading_window_start
-        self.loading_window_end = req.loading_window_end
-        self.discharge_window_start = req.discharge_window_start
-        self.discharge_window_end = req.discharge_window_end
+
+        def _to_date(val: Any) -> Optional[date]:
+            if val is None:
+                return None
+            if isinstance(val, date):
+                return val
+            if isinstance(val, str) and val.strip():
+                try:
+                    return date.fromisoformat(val.strip().split("T")[0])
+                except (ValueError, TypeError):
+                    return None
+            return None
+
+        self.required_delivery_date = _to_date(req.required_delivery_date)
+        self.loading_window_start = _to_date(req.loading_window_start)
+        self.loading_window_end = _to_date(req.loading_window_end)
+        self.discharge_window_start = _to_date(req.discharge_window_start)
+        self.discharge_window_end = _to_date(req.discharge_window_end)
         self.preferred_vessel_type = req.preferred_vessel_type
         self.max_acceptable_freight = (
             Decimal(str(req.max_acceptable_freight))

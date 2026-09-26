@@ -457,8 +457,88 @@ class TestBackendRegressions(unittest.TestCase):
         self.assertIn(forecast_indonesia.trend, ["Rising", "Falling", "Stable"])
         self.assertGreaterEqual(forecast_indonesia.confidence_score, 50.0)
 
+    def test_auth_get_current_user_avatar_handling(self):
+        """
+        Verify that get_current_user() successfully provisions users with or without
+        avatar_url (picture / photo_url) and does not raise NameError or 500 exceptions.
+        """
+        import asyncio
+        import uuid
+        from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+        from app.models.base import Base
+        from app.middleware.auth import get_current_user
+
+        async def run_auth_test():
+            test_engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+            async_session_factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+
+            async with test_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+
+            async with async_session_factory() as session:
+                # Test Case 1: First login with 'picture' claim
+                mock_uid_1 = f"user_{uuid.uuid4().hex[:8]}"
+                with patch("app.middleware.auth.verify_id_token_async") as mock_verify:
+                    mock_verify.return_value = {
+                        "uid": mock_uid_1,
+                        "email": f"{mock_uid_1}@example.com",
+                        "name": "Captain Kirk",
+                        "picture": "https://example.com/avatar1.jpg",
+                    }
+                    user1 = await get_current_user(token="valid_token_1", db=session)
+                    self.assertEqual(user1.email, f"{mock_uid_1}@example.com")
+                    self.assertEqual(user1.avatar_url, "https://example.com/avatar1.jpg")
+
+                # Test Case 2: First login with no avatar claim (defaults to None without error)
+                mock_uid_2 = f"user_{uuid.uuid4().hex[:8]}"
+                with patch("app.middleware.auth.verify_id_token_async") as mock_verify:
+                    mock_verify.return_value = {
+                        "uid": mock_uid_2,
+                        "email": f"{mock_uid_2}@example.com",
+                        "name": "Spock",
+                    }
+                    user2 = await get_current_user(token="valid_token_2", db=session)
+                    self.assertEqual(user2.email, f"{mock_uid_2}@example.com")
+                    self.assertIsNone(user2.avatar_url)
+
+            await test_engine.dispose()
+
+        asyncio.run(run_auth_test())
+
+    def test_evaluate_voyage_with_string_dates(self):
+        """
+        Verify that POST /voyage/evaluate (and EvaluatedCargo / calculate_risk_scores)
+        properly accepts string date inputs like '2026-10-01' without raising AttributeError.
+        """
+        import asyncio
+        from app.schemas.evaluation import VoyageEvaluationRequest
+        from app.routers.voyage import evaluate_voyage
+
+        req = VoyageEvaluationRequest(
+            cargo_type="Coal",
+            cargo_quantity_mt=75000.0,
+            origin_country="Indonesia",
+            destination_port="Paradip",
+            loading_window_start="2026-10-01",
+            loading_window_end="2026-10-10",
+            discharge_window_start="2026-10-15",
+            discharge_window_end="2026-10-25",
+            required_delivery_date="2026-10-25",
+        )
+
+        async def run_eval():
+            res = await evaluate_voyage(req=req, current_user=None, db=None)
+            self.assertIsNotNone(res.risk_scores)
+            self.assertIsNotNone(res.idle_prediction)
+            self.assertIsNotNone(res.voyage_cost)
+            self.assertGreater(len(res.vessel_recommendations), 0)
+
+        asyncio.run(run_eval())
+
 
 if __name__ == "__main__":
     unittest.main()
+
+
 
 
