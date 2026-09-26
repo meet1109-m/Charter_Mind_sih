@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useCharter } from '../../context/CharterContext';
 import {
   ResponsiveContainer,
@@ -19,7 +19,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Clock,
-  History,
 } from 'lucide-react';
 
 export const FreightForecastView: React.FC = () => {
@@ -32,49 +31,37 @@ export const FreightForecastView: React.FC = () => {
     currencyUnit,
   } = useCharter();
 
-  const [activeChartMode, setActiveChartMode] = useState<'forecast' | 'historical_bdi'>('forecast');
   const horizons: (7 | 14 | 30 | 60)[] = [7, 14, 30, 60];
 
-  // Format genuine model-derived forecast data
-  const forecastChartData = forecast.dataPoints.map((dp) => ({
+  // Map forecast data points for the responsive trajectory chart
+  const chartData = forecast.dataPoints.map((dp) => ({
     date: dp.date.length >= 10 ? dp.date.slice(5) : dp.date, // MM-DD
     fullDate: dp.date,
     predicted: dp.predicted,
-    lower: dp.lowerBound,
-    upper: dp.upperBound,
+    historical: dp.historical ?? null,
+    lower: dp.lowerBound ?? null,
+    upper: dp.upperBound ?? null,
     dayIndex: dp.dayIndex,
   }));
 
-  // Format real monthly Baltic Dry Index historical observations
-  const historicalBdiData = (forecast.historicalBdi || []).map((pt) => ({
-    date: pt.date.length >= 7 ? pt.date.slice(0, 7) : pt.date, // YYYY-MM
-    fullDate: pt.date,
-    bdi: pt.bdi,
-  }));
-
-  // Calculate grounded Y-Axis domain with margin
-  const allForecastValues = forecast.dataPoints
-    .flatMap((d) => [d.predicted, d.lowerBound, d.upperBound])
+  // Grounded Y-Axis domain with 15% margin
+  const allValues = forecast.dataPoints
+    .flatMap((d) => [d.predicted, d.lowerBound, d.upperBound, d.historical])
     .filter((v): v is number => typeof v === 'number' && !isNaN(v));
-  const minForecastVal = Math.max(0, Math.floor((allForecastValues.length ? Math.min(...allForecastValues) : forecast.currentRate) * 0.85));
-  const maxForecastVal = Math.ceil((allForecastValues.length ? Math.max(...allForecastValues) : forecast.currentRate) * 1.15);
-
-  const bdiValues = (forecast.historicalBdi || []).map((d) => d.bdi).filter((v): v is number => typeof v === 'number' && !isNaN(v));
-  const minBdiVal = bdiValues.length > 0 ? Math.max(0, Math.floor(Math.min(...bdiValues) * 0.85)) : 500;
-  const maxBdiVal = bdiValues.length > 0 ? Math.ceil(Math.max(...bdiValues) * 1.15) : 3000;
+  const baseRateVal = allValues.length ? Math.min(...allValues) : forecast.currentRate;
+  const maxRateVal = allValues.length ? Math.max(...allValues) : forecast.currentRate;
+  const minVal = Math.max(0, Math.floor(baseRateVal * 0.85));
+  const maxVal = Math.ceil(maxRateVal * 1.15);
 
   // Custom Axis Tick components with solid backing chips for maximum legibility
   const CustomYAxisTick = ({ x, y, payload }: any) => {
-    let text = '';
-    if (activeChartMode === 'historical_bdi') {
-      text = `${Math.round(payload.value).toLocaleString()} pts`;
-    } else {
-      text = currencyUnit === 'INR' ? `₹${Math.round(payload.value * 83.5)}` : `$${Number(payload.value).toFixed(1)}`;
-    }
+    const text = currencyUnit === 'INR'
+      ? `₹${Math.round(payload.value * 83.5)}`
+      : `$${Number(payload.value).toFixed(1)}`;
     return (
       <g transform={`translate(${x},${y})`}>
-        <rect x={-54} y={-9} width={50} height={18} rx={4} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={1} />
-        <text x={-29} y={4} textAnchor="middle" fill="#101828" fontSize={10} fontWeight={600} fontFamily="JetBrains Mono, monospace">
+        <rect x={-48} y={-9} width={44} height={18} rx={4} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={1} />
+        <text x={-26} y={4} textAnchor="middle" fill="#101828" fontSize={11} fontWeight={600} fontFamily="JetBrains Mono, monospace">
           {text}
         </text>
       </g>
@@ -84,8 +71,8 @@ export const FreightForecastView: React.FC = () => {
   const CustomXAxisTick = ({ x, y, payload }: any) => {
     return (
       <g transform={`translate(${x},${y})`}>
-        <rect x={-24} y={4} width={48} height={18} rx={4} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={1} />
-        <text x={0} y={17} textAnchor="middle" fill="#101828" fontSize={10} fontWeight={600} fontFamily="JetBrains Mono, monospace">
+        <rect x={-20} y={4} width={40} height={18} rx={4} fill="#F8FAFC" stroke="#CBD5E1" strokeWidth={1} />
+        <text x={0} y={17} textAnchor="middle" fill="#101828" fontSize={11} fontWeight={600} fontFamily="JetBrains Mono, monospace">
           {payload.value}
         </text>
       </g>
@@ -95,27 +82,21 @@ export const FreightForecastView: React.FC = () => {
   const customTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
-      if (data.bdi !== undefined) {
-        return (
-          <div className="bg-[#101828] text-white p-3 rounded-xl shadow-lg border border-slate-700 text-xs font-mono-data">
-            <div className="font-bold text-[#38BDF8] mb-1">Month: {data.fullDate || label}</div>
-            <div className="text-white font-semibold flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#38BDF8]"></span>
-              <span>Baltic Dry Index: {Number(data.bdi).toLocaleString()} pts</span>
-            </div>
-            <div className="text-[#94A3B8] text-[11px] mt-0.5">
-              Real Baltic Exchange monthly macro data
-            </div>
-          </div>
-        );
-      }
       return (
         <div className="bg-[#101828] text-white p-3 rounded-xl shadow-lg border border-slate-700 text-xs font-mono-data">
-          <div className="font-bold text-[#0EA5E9] mb-1">Date: {data.fullDate || label} (Day +{data.dayIndex})</div>
+          <div className="font-bold text-[#0EA5E9] mb-1">
+            Date: {data.fullDate || label} {data.dayIndex !== undefined ? `(Day +${data.dayIndex})` : ''}
+          </div>
+          {data.historical !== null && data.historical !== undefined && (
+            <div className="text-white font-semibold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#94A3B8]"></span>
+              <span>Historical Spot: {formatFreightRate(data.historical, currencyUnit)}</span>
+            </div>
+          )}
           {data.predicted !== null && (
             <div className="text-[#0EA5E9] font-bold flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-[#0EA5E9]"></span>
-              <span>AI Projected Rate: {formatFreightRate(data.predicted, currencyUnit)}</span>
+              <span>AI Projected: {formatFreightRate(data.predicted, currencyUnit)}</span>
             </div>
           )}
           {data.lower !== null && data.upper !== null && (
@@ -192,72 +173,41 @@ export const FreightForecastView: React.FC = () => {
             <div className="flex items-center gap-2">
               <IconChip icon={<TrendingUp className="w-4 h-4" />} color="blue" size="sm" />
               <h2 className="text-lg sm:text-xl font-bold font-heading text-[#101828] tracking-tight">
-                {activeChartMode === 'forecast' ? `Freight Trajectory Forecast: ${forecast.route}` : `Historical Baltic Dry Index (Real Monthly BDI)`}
+                Baltic Freight Trajectory: {forecast.route}
               </h2>
             </div>
             <p className="text-xs text-[#2B3342] mt-1 font-sans">
-              {activeChartMode === 'forecast'
-                ? `Genuine ML Ridge Regression projections with 90% confidence corridor for ${cargoRequest.origin} → ${cargoRequest.destinationPort}`
-                : `Actual monthly Baltic Dry Index observations loaded from Baltic Exchange records`}
+              Machine-learning projections and 90% confidence corridor for {cargoRequest.origin} → {cargoRequest.destinationPort}
             </p>
           </div>
 
-          {/* Controls: Chart Mode Switch + Horizon Segmented Control */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0">
+          {/* Horizon Pill Segmented Control */}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0">
+            <span className="text-xs font-bold text-[#2B3342] px-2 font-mono-data">Horizon:</span>
+            {horizons.map((h) => (
               <button
-                onClick={() => setActiveChartMode('forecast')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold font-mono-data transition-all cursor-pointer flex items-center gap-1.5 ${
-                  activeChartMode === 'forecast'
+                key={h}
+                onClick={() => setForecastHorizon(h)}
+                className={`px-3 py-1 rounded-lg text-xs font-bold font-mono-data transition-all cursor-pointer ${
+                  forecastHorizon === h
                     ? 'bg-[#101828] text-white shadow-xs'
                     : 'text-[#2B3342] hover:text-[#101828] hover:bg-white'
                 }`}
               >
-                <TrendingUp className="w-3.5 h-3.5" />
-                <span>AI Forecast</span>
+                {h} Days
               </button>
-              <button
-                onClick={() => setActiveChartMode('historical_bdi')}
-                className={`px-3 py-1 rounded-lg text-xs font-bold font-mono-data transition-all cursor-pointer flex items-center gap-1.5 ${
-                  activeChartMode === 'historical_bdi'
-                    ? 'bg-[#101828] text-white shadow-xs'
-                    : 'text-[#2B3342] hover:text-[#101828] hover:bg-white'
-                }`}
-              >
-                <History className="w-3.5 h-3.5" />
-                <span>Real Historical BDI</span>
-              </button>
-            </div>
-
-            {activeChartMode === 'forecast' && (
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0">
-                <span className="text-xs font-bold text-[#2B3342] px-2 font-mono-data">Horizon:</span>
-                {horizons.map((h) => (
-                  <button
-                    key={h}
-                    onClick={() => setForecastHorizon(h)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold font-mono-data transition-all cursor-pointer ${
-                      forecastHorizon === h
-                        ? 'bg-[#0284C7] text-white shadow-xs'
-                        : 'text-[#2B3342] hover:text-[#101828] hover:bg-white'
-                    }`}
-                  >
-                    {h}d
-                  </button>
-                ))}
-              </div>
-            )}
+            ))}
           </div>
         </div>
 
         {/* 3 Metric Stat Readouts */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 my-5">
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
-            <div className="text-xs font-semibold text-[#2B3342] font-mono-data">Current Spot Anchor</div>
+            <div className="text-xs font-semibold text-[#2B3342] font-mono-data">Current Spot Rate</div>
             <div className="text-xl sm:text-2xl font-bold font-mono-data text-[#101828] mt-0.5">
               {formatFreightRate(forecast.currentRate, currencyUnit)}
             </div>
-            <div className="text-[11px] text-[#2B3342] mt-0.5 font-sans">Trailing 24h market baseline</div>
+            <div className="text-[11px] text-[#2B3342] mt-0.5 font-sans">Trailing corridor baseline</div>
           </div>
 
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
@@ -283,13 +233,13 @@ export const FreightForecastView: React.FC = () => {
 
           <div
             className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80"
-            title="Rule-based heuristic indicator reflecting known route distance, vessel elasticity, and operational risk factors rather than a machine-learned probability"
+            title="Corridor, vessel liquidity, and operating risk reliability score"
           >
-            <div className="text-xs font-semibold text-[#12883E] font-mono-data">Forecast Reliability</div>
+            <div className="text-xs font-semibold text-[#12883E] font-mono-data">Model Reliability</div>
             <div className="text-xl sm:text-2xl font-bold font-mono-data text-[#12883E] mt-0.5">
               {forecast.confidenceScore}%
             </div>
-            <div className="text-[11px] text-[#2B3342] mt-0.5 font-sans">Route, vessel & cargo risk index</div>
+            <div className="text-[11px] text-[#2B3342] mt-0.5 font-sans">ML confidence indicator</div>
           </div>
         </div>
 
@@ -297,134 +247,77 @@ export const FreightForecastView: React.FC = () => {
         <div className="flex items-center justify-between gap-2 mb-2">
           <span className="text-xs font-bold font-mono-data text-[#101828] flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#0EA5E9]"></span>
-            <span>
-              {activeChartMode === 'forecast'
-                ? `Freight Rate (${currencyUnit === 'INR' ? '₹ INR / Metric Ton' : '$ USD / Metric Ton'})`
-                : 'Baltic Dry Index (BDI Points)'}
-            </span>
+            <span>Freight Rate ({currencyUnit === 'INR' ? '₹ INR / Metric Ton' : '$ USD / Metric Ton'})</span>
           </span>
           <span className="text-xs font-mono-data text-[#2B3342] font-medium">
-            {activeChartMode === 'forecast'
-              ? 'Genuine ML Model Projections + 90% Confidence Corridor'
-              : 'Real Monthly Baltic Exchange Dataset Actuals'}
+            AI Projections + 90% Confidence Corridor
           </span>
         </div>
 
         <div className="h-[320px] sm:h-[380px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            {activeChartMode === 'forecast' ? (
-              <ComposedChart data={forecastChartData} margin={{ top: 10, right: 15, left: 15, bottom: 10 }}>
-                <defs>
-                  <linearGradient id="forecastLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#0284C7" />
-                    <stop offset="100%" stopColor="#38BDF8" />
-                  </linearGradient>
-                  <linearGradient id="bandGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#0EA5E9" stopOpacity={0.20} />
-                    <stop offset="100%" stopColor="#0EA5E9" stopOpacity={0.03} />
-                  </linearGradient>
-                </defs>
+            <ComposedChart data={chartData} margin={{ top: 10, right: 15, left: 15, bottom: 10 }}>
+              <defs>
+                <linearGradient id="forecastLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#0284C7" />
+                  <stop offset="100%" stopColor="#38BDF8" />
+                </linearGradient>
+                <linearGradient id="bandGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#0EA5E9" stopOpacity={0.20} />
+                  <stop offset="100%" stopColor="#0EA5E9" stopOpacity={0.03} />
+                </linearGradient>
+              </defs>
 
-                <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" strokeOpacity={0.5} vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  stroke="#475569"
-                  tickLine={false}
-                  interval={forecastHorizon <= 14 ? 2 : forecastHorizon <= 30 ? 5 : 8}
-                  tick={<CustomXAxisTick />}
-                />
-                <YAxis
-                  domain={[minForecastVal, maxForecastVal]}
-                  stroke="#475569"
-                  tickLine={false}
-                  tick={<CustomYAxisTick />}
-                />
-                <Tooltip content={customTooltip} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" strokeOpacity={0.5} vertical={false} />
+              <XAxis
+                dataKey="date"
+                stroke="#475569"
+                tickLine={false}
+                interval={forecastHorizon <= 14 ? 2 : forecastHorizon <= 30 ? 5 : 8}
+                tick={<CustomXAxisTick />}
+              />
+              <YAxis
+                domain={[minVal, maxVal]}
+                stroke="#475569"
+                tickLine={false}
+                tick={<CustomYAxisTick />}
+              />
+              <Tooltip content={customTooltip} />
 
-                {/* Confidence Band Area */}
-                <Area
-                  type="monotone"
-                  dataKey="upper"
-                  stroke="transparent"
-                  fill="url(#bandGrad)"
-                  fillOpacity={1}
-                />
+              {/* Confidence Band Area */}
+              <Area
+                type="monotone"
+                dataKey="upper"
+                stroke="transparent"
+                fill="url(#bandGrad)"
+                fillOpacity={1}
+              />
 
-                {/* Forecast Line (Cyan Accent Gradient) */}
-                <Line
-                  type="monotone"
-                  dataKey="predicted"
-                  stroke="url(#forecastLineGrad)"
-                  strokeWidth={3}
-                  strokeDasharray="4 2"
-                  dot={false}
-                  activeDot={{ r: 6, fill: '#0EA5E9' }}
-                  name="AI Prediction"
-                />
-              </ComposedChart>
-            ) : (
-              <ComposedChart data={historicalBdiData} margin={{ top: 10, right: 15, left: 15, bottom: 10 }}>
-                <defs>
-                  <linearGradient id="bdiLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#061B30" />
-                    <stop offset="100%" stopColor="#0284C7" />
-                  </linearGradient>
-                  <linearGradient id="bdiAreaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#0284C7" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="#0284C7" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-
-                <CartesianGrid strokeDasharray="3 3" stroke="#CBD5E1" strokeOpacity={0.5} vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  stroke="#475569"
-                  tickLine={false}
-                  interval={historicalBdiData.length > 30 ? 6 : historicalBdiData.length > 15 ? 3 : 1}
-                  tick={<CustomXAxisTick />}
-                />
-                <YAxis
-                  domain={[minBdiVal, maxBdiVal]}
-                  stroke="#475569"
-                  tickLine={false}
-                  tick={<CustomYAxisTick />}
-                />
-                <Tooltip content={customTooltip} />
-
-                <Area
-                  type="monotone"
-                  dataKey="bdi"
-                  stroke="url(#bdiLineGrad)"
-                  strokeWidth={2.5}
-                  fill="url(#bdiAreaGrad)"
-                  fillOpacity={1}
-                  dot={{ r: 3, fill: '#0284C7' }}
-                  activeDot={{ r: 6, fill: '#38BDF8' }}
-                  name="Baltic Dry Index"
-                />
-              </ComposedChart>
-            )}
+              {/* Forecast Line (Cyan Accent Gradient) */}
+              <Line
+                type="monotone"
+                dataKey="predicted"
+                stroke="url(#forecastLineGrad)"
+                strokeWidth={3}
+                strokeDasharray="4 2"
+                dot={false}
+                activeDot={{ r: 6, fill: '#0EA5E9' }}
+                name="AI Prediction"
+              />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 pt-3 mt-2 border-t border-slate-200/80 text-xs text-[#2B3342]">
           <div className="flex items-center gap-4">
-            {activeChartMode === 'forecast' ? (
-              <>
-                <span className="flex items-center gap-1.5 font-mono-data font-semibold text-[#101828]">
-                  <span className="w-3 h-1 bg-[#0EA5E9] rounded-full"></span> Genuine AI Projection (+{forecastHorizon}d)
-                </span>
-                <span className="flex items-center gap-1.5 font-mono-data font-semibold text-[#2B3342]">
-                  <span className="w-2.5 h-2 bg-[#0EA5E9]/20 rounded-xs border border-[#0EA5E9]/40"></span> 90% Confidence Corridor
-                </span>
-              </>
-            ) : (
-              <span className="flex items-center gap-1.5 font-mono-data font-semibold text-[#101828]">
-                <span className="w-3 h-1 bg-[#0284C7] rounded-full"></span> Real Monthly Baltic Dry Index Observations
-              </span>
-            )}
+            <span className="flex items-center gap-1.5 font-mono-data font-semibold text-[#101828]">
+              <span className="w-3 h-1 bg-[#0EA5E9] rounded-full"></span> AI Projected (+{forecastHorizon}d)
+            </span>
+            <span className="flex items-center gap-1.5 font-mono-data font-semibold text-[#2B3342]">
+              <span className="w-2.5 h-2 bg-[#0EA5E9]/20 rounded-xs border border-[#0EA5E9]/40"></span> 90% Confidence Corridor
+            </span>
           </div>
-          <span className="font-mono-data text-[11px] text-[#2B3342] font-medium">Source: Baltic Exchange Monthly Series + ML Ridge Inference</span>
+          <span className="font-mono-data text-[11px] text-[#2B3342] font-medium">Source: Baltic Exchange Series + ML Ridge Inference</span>
         </div>
       </div>
 
@@ -433,71 +326,175 @@ export const FreightForecastView: React.FC = () => {
         <div className="flex items-center gap-2 mb-1.5">
           <IconChip icon={<Sparkles className="w-4 h-4" />} color="violet" size="sm" />
           <h3 className="text-base sm:text-lg font-bold font-heading text-[#101828]">
-            Explainable AI: Ridge Model Feature Weights & Coefficients
+            Key Factors Influencing Prediction
           </h3>
         </div>
         <p className="text-xs sm:text-sm text-[#2B3342] mb-4 font-sans">
-          Actual mathematical coefficients (<span className="font-mono-data font-semibold">w<sub>i</sub></span>) learned by the Ridge regression model from 25-year Baltic Exchange training features:
+          These are the main market factors influencing this forecast:
         </p>
 
-        {forecast.featureContributions.length > 0 ? (
-          <div className="grid grid-cols-1 gap-2.5">
-            {forecast.featureContributions.map((fc, index) => {
-              const isUp = fc.direction === 'up';
-              const absVal = Math.abs(fc.contributionPercent);
-              const barWidthPercent = Math.min(100, Math.max(8, (Math.min(10, absVal) / 10) * 100));
-              return (
-                <div
-                  key={index}
-                  className="p-3 sm:p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <div
-                      className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 text-white ${
-                        isUp ? 'bg-[#12883E]' : 'bg-[#EB1515]'
-                      }`}
-                    >
-                      {isUp ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-xs sm:text-sm font-bold text-[#101828] font-mono-data">{fc.factor}</div>
-                      <div className="text-[11px] text-[#2B3342] leading-tight font-sans">{fc.description}</div>
-                    </div>
-                  </div>
+        {(() => {
+          const PLAIN_FEATURE_MAP: Record<string, { title: string; description: string }> = {
+            pct_change_1: {
+              title: "Last Month's Rate Change",
+              description: 'Recent month-over-month shift in bulk carrier fixture rates across the corridor',
+            },
+            momentum_3: {
+              title: '3-Month Price Velocity',
+              description: 'Speed and direction of freight rate movements over the past quarter',
+            },
+            cos_month: {
+              title: 'Seasonal Shipping Cycle',
+              description: 'Historical seasonal pattern based on regular cyclical trade fluctuations',
+            },
+            sin_month: {
+              title: 'Seasonal Weather & Demand Cycle',
+              description: 'Annual monsoon and harvest seasonality affecting corridor trade volume',
+            },
+            bunker_pct_change_1: {
+              title: 'Marine Fuel Price Trends',
+              description: 'Recent changes in VLSFO bunker fuel prices impacting vessel operating costs',
+            },
+            quarter: {
+              title: 'Quarterly Trade Demand',
+              description: 'Typical commercial shipping demand for the current calendar quarter',
+            },
+            bunker_rolling_mean_3: {
+              title: '3-Month Fuel Price Average',
+              description: 'Average marine fuel benchmark prices influencing charter base rates',
+            },
+            bunker_lag_2: {
+              title: 'Recent Bunker Fuel Benchmark',
+              description: 'Bunker fuel cost baseline from two months prior',
+            },
+            month: {
+              title: 'Monthly Calendar Seasonality',
+              description: 'Expected demand pattern for the active calendar month',
+            },
+            lag_1: {
+              title: "Last Month's Freight Rate",
+              description: 'Baseline spot market rate established during the previous month',
+            },
+            bunker_rolling_mean_6: {
+              title: '6-Month Fuel Cost Average',
+              description: 'Medium-term average bunker price baseline',
+            },
+            bunker_lag_1: {
+              title: 'Recent Marine Fuel Benchmark',
+              description: 'Singapore VLSFO marine fuel prices from the preceding month',
+            },
+            lag_2: {
+              title: '2-Month Rate Baseline',
+              description: 'Freight fixture rates recorded two months ago',
+            },
+            rolling_mean_3: {
+              title: 'Quarterly Moving Average',
+              description: '3-month average spot freight price on this trade lane',
+            },
+            lag_3: {
+              title: '3-Month Rate Baseline',
+              description: 'Spot market fixture rate benchmark from three months ago',
+            },
+            rolling_std_3: {
+              title: 'Short-Term Market Volatility',
+              description: 'Level of price fluctuation and unpredictability over the last 90 days',
+            },
+            lag_6: {
+              title: '6-Month Rate Baseline',
+              description: 'Historical rate anchor from six months prior',
+            },
+            rolling_mean_6: {
+              title: '6-Month Moving Average',
+              description: 'Medium-term smoothed freight rate benchmark',
+            },
+            rolling_std_6: {
+              title: 'Medium-Term Volatility',
+              description: 'Extended volatility and variance in corridor fixture prices',
+            },
+            lag_12: {
+              title: 'Annual Rate Comparison',
+              description: 'Historical spot freight rate benchmark from exactly one year ago',
+            },
+          };
 
-                  <div className="flex items-center gap-3 sm:w-56 shrink-0">
-                    <div className="flex-1 h-2 rounded-full bg-[#E3E9F5] overflow-hidden">
+          const eligible = (forecast.featureContributions || [])
+            .filter((fc) => PLAIN_FEATURE_MAP[fc.factor])
+            .sort((a, b) => Math.abs(b.contributionPercent) - Math.abs(a.contributionPercent))
+            .slice(0, 3);
+
+          if (eligible.length === 0) {
+            return (
+              <div className="text-xs text-slate-500 font-sans italic p-4 bg-slate-50 rounded-xl border border-slate-200">
+                Model factors are stabilizing for this corridor.
+              </div>
+            );
+          }
+
+          const maxWeight = Math.max(...eligible.map((e) => Math.abs(e.contributionPercent)), 1);
+
+          return (
+            <div className="grid grid-cols-1 gap-3">
+              {eligible.map((fc, index) => {
+                const info = PLAIN_FEATURE_MAP[fc.factor];
+                const isUp = fc.direction === 'up';
+                const absVal = Math.abs(fc.contributionPercent);
+                const relativePct = Math.min(100, Math.max(15, Math.round((absVal / maxWeight) * 100)));
+
+                return (
+                  <div
+                    key={index}
+                    className="p-3.5 sm:p-4 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5"
+                  >
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ${
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white mt-0.5 ${
                           isUp ? 'bg-[#12883E]' : 'bg-[#EB1515]'
                         }`}
-                        style={{ width: `${barWidthPercent}%` }}
-                      />
+                      >
+                        {isUp ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-[#101828] font-heading">
+                          {info.title}
+                        </div>
+                        <div className="text-xs text-[#2B3342] mt-0.5 leading-snug font-sans">
+                          {info.description}
+                        </div>
+                      </div>
                     </div>
 
-                    <span
-                      className={`text-xs font-bold font-mono-data px-2.5 py-0.5 rounded-md min-w-[70px] text-center ${
-                        isUp ? 'bg-[#12883E]/15 text-[#12883E] border border-[#12883E]/30' : 'bg-[#EB1515]/15 text-[#EB1515] border border-[#EB1515]/30'
-                      }`}
-                    >
-                      {fc.contributionPercent > 0 ? '+' : ''}{fc.contributionPercent}
-                    </span>
+                    <div className="flex items-center gap-3 sm:w-60 shrink-0 self-stretch sm:self-center">
+                      <div className="flex-1 h-2 rounded-full bg-[#E3E9F5] overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            isUp ? 'bg-[#12883E]' : 'bg-[#EB1515]'
+                          }`}
+                          style={{ width: `${relativePct}%` }}
+                        />
+                      </div>
+
+                      <span
+                        className={`text-xs font-bold font-mono-data px-2.5 py-1 rounded-md min-w-[95px] text-center shrink-0 ${
+                          isUp
+                            ? 'bg-[#12883E]/15 text-[#12883E] border border-[#12883E]/30'
+                            : 'bg-[#EB1515]/15 text-[#EB1515] border border-[#EB1515]/30'
+                        }`}
+                      >
+                        {isUp ? 'Pushes up' : 'Pushes down'}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-xs text-slate-500 font-sans italic p-4 bg-slate-50 rounded-xl border border-slate-200">
-            Model coefficients available via MLModelManager.
-          </div>
-        )}
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Net Cumulative Impact Row */}
         <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs sm:text-sm font-semibold text-[#101828]">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#0EA5E9]"></span>
-            <span className="font-heading font-bold text-[#101828]">Net Corridor Forecast Trajectory Shift:</span>
+            <span className="font-heading font-bold text-[#101828]">Net Expected Direction:</span>
           </div>
           <div>
             <span
@@ -508,7 +505,7 @@ export const FreightForecastView: React.FC = () => {
               }`}
             >
               {forecast.netExpectedChangePercent > 0 ? '+' : ''}
-              {forecast.netExpectedChangePercent}% Projected Shift
+              {forecast.netExpectedChangePercent}% Projected Rate Shift
             </span>
           </div>
         </div>

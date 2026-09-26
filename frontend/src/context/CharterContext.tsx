@@ -379,14 +379,28 @@ export const CharterProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [forecast, setForecast] = useState<ForecastResult>(() => {
     const route = `${cargoRequest.origin} → ${selectedPort.name}`;
     const baseRate = ROUTE_BASELINE_RATES[cargoRequest.origin]?.[cargoRequest.destinationPort] || 18.0;
-    return generateForecast(route, baseRate, forecastHorizon, simulatorOverrides);
+    return generateForecast(
+      route,
+      baseRate,
+      forecastHorizon,
+      simulatorOverrides,
+      selectedVessel.name,
+      cargoRequest.cargoType
+    );
   });
 
   // 6. Optimal Charter Window Advisory State
   const [optimalWindow, setOptimalWindow] = useState<OptimalCharterWindowResult>(() => {
     const route = `${cargoRequest.origin} → ${selectedPort.name}`;
     const baseRate = ROUTE_BASELINE_RATES[cargoRequest.origin]?.[cargoRequest.destinationPort] || 18.0;
-    const initialForecast = generateForecast(route, baseRate, forecastHorizon, simulatorOverrides);
+    const initialForecast = generateForecast(
+      route,
+      baseRate,
+      forecastHorizon,
+      simulatorOverrides,
+      selectedVessel.name,
+      cargoRequest.cargoType
+    );
     const initialRisk = calculateRiskScores(cargoRequest, selectedVessel, selectedPort, simulatorOverrides);
     return determineOptimalWindow(initialForecast, cargoRequest, initialRisk);
   });
@@ -482,7 +496,9 @@ export const CharterProvider: React.FC<{ children: React.ReactNode }> = ({ child
             route,
             localCost.freightRatePerMT,
             forecastHorizon,
-            simulatorOverrides
+            simulatorOverrides,
+            selectedVessel.name,
+            cargoRequest.cargoType
           );
           const localWindow = determineOptimalWindow(localForecast, cargoRequest, localRisk);
 
