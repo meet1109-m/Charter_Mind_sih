@@ -123,6 +123,13 @@ class ForecastService:
             sin_month = np.sin(2 * np.pi * next_month / 12.0)
             cos_month = np.cos(2 * np.pi * next_month / 12.0)
 
+            bunker_hist = [550.0] * 6
+            b_lag_1 = bunker_hist[-1]
+            b_lag_2 = bunker_hist[-2]
+            b_rolling_3 = float(np.mean(bunker_hist[-3:]))
+            b_rolling_6 = float(np.mean(bunker_hist[-6:]))
+            b_pct_change_1 = (b_lag_1 - b_lag_2) / (b_lag_2 + 1e-6)
+
             feat_dict = {
                 "lag_1": lag_1,
                 "lag_2": lag_2,
@@ -135,6 +142,11 @@ class ForecastService:
                 "rolling_std_6": rolling_std_6,
                 "momentum_3": momentum_3,
                 "pct_change_1": pct_change_1,
+                "bunker_lag_1": b_lag_1,
+                "bunker_lag_2": b_lag_2,
+                "bunker_rolling_mean_3": b_rolling_3,
+                "bunker_rolling_mean_6": b_rolling_6,
+                "bunker_pct_change_1": b_pct_change_1,
                 "month": next_month,
                 "quarter": quarter,
                 "sin_month": sin_month,

@@ -7,10 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.middleware.auth import get_current_user
+from app.middleware.auth import get_current_user, get_optional_user
 from app.models.cargo_request import CargoRequest
 from app.models.user import User
 from app.models.voyage_plan import VoyagePlan
+from app.routers.alerts import check_and_create_operational_alerts
 from app.schemas.cargo import CargoRequestResponse
 from app.schemas.evaluation import (
     VoyageEvaluationRequest,
@@ -124,6 +125,8 @@ class EvaluatedCargo:
 )
 async def evaluate_voyage(
     req: VoyageEvaluationRequest,
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: AsyncSession = Depends(get_db),
 ) -> VoyageEvaluationResponse:
     """
     Real-time in-memory calculation endpoint powering the frontend interactive simulator.
@@ -196,6 +199,18 @@ async def evaluate_voyage(
 
     # 8. Optimal charter window advisory
     optimal_window = determine_optimal_window(forecast_result, temp_cargo, risk_scores)
+
+    # Automatically create operational alerts if risk breaches High/Critical or idle wait > 48h
+    if current_user and db:
+        await check_and_create_operational_alerts(
+            db=db,
+            user_id=current_user.id,
+            risk_scores=risk_scores,
+            idle_hours=idle_result.expected_idle_hours,
+            port_name=port.name,
+            origin_country=req.origin_country,
+            cargo_type=req.cargo_type,
+        )
 
     return VoyageEvaluationResponse(
         vessel_recommendations=scored_vessels,

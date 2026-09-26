@@ -7,6 +7,7 @@ from app.middleware.auth import get_current_user
 from app.models.cargo_request import CargoRequest
 from app.models.port_snapshot import PortSnapshot
 from app.models.user import User
+from app.routers.alerts import check_and_create_operational_alerts
 from app.schemas.port import PortSpec
 from app.schemas.risk import RiskScoreRequest, RiskScoreResult
 from app.services.risk_engine import calculate_risk_scores
@@ -88,4 +89,16 @@ async def score_risk(
         VESSEL_SPECS["panamax"],
     )
 
-    return calculate_risk_scores(cargo, default_vessel, active_port, req.simulator_overrides)
+    risk_result = calculate_risk_scores(cargo, default_vessel, active_port, req.simulator_overrides)
+
+    # Automatically create operational alerts if risk breaches High/Critical threshold
+    await check_and_create_operational_alerts(
+        db=db,
+        user_id=current_user.id,
+        risk_scores=risk_result,
+        port_name=active_port.name,
+        origin_country=cargo.origin_country,
+        cargo_type=cargo.cargo_type,
+    )
+
+    return risk_result

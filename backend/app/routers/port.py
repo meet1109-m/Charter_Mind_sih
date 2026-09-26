@@ -86,9 +86,8 @@ async def get_port_snapshot(
     if snapshot:
         return PortSnapshotResponse.model_validate(snapshot)
 
-    # Fallback to static port specifications
-    return PortSnapshotResponse(
-        id=uuid.uuid4(),
+    # Persist and cache newly computed port snapshot into DB
+    new_snapshot = PortSnapshot(
         port_id=spec.id,
         congestion_level=spec.congestion,
         berthing_wait_days=Decimal(str(spec.berthing_wait_days)),
@@ -96,3 +95,7 @@ async def get_port_snapshot(
         weather_risk=spec.weather_risk,
         recorded_at=datetime.now(timezone.utc),
     )
+    db.add(new_snapshot)
+    await db.commit()
+    await db.refresh(new_snapshot)
+    return PortSnapshotResponse.model_validate(new_snapshot)

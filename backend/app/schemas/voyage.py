@@ -17,6 +17,8 @@ class SimulatorOverrides(BaseModel):
     weather: Optional[WeatherCondition] = Field("Normal", description="Marine sea state and weather risk override")
     freight_rate_offset_percent: Optional[float] = Field(0.0, description="Percentage adjustment to spot benchmark freight rate")
     vessel_availability: Optional[VesselAvailability] = Field("Available", description="Fleet chartering market availability")
+    port_traffic_zscore: Optional[float] = Field(None, description="Port traffic throughput Z-score override")
+    forecast_volatility_signal: Optional[float] = Field(None, description="Forecast freight market volatility signal override")
 
 
 class VoyagePlanRequest(BaseModel):

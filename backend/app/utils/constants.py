@@ -1,6 +1,7 @@
 from typing import Dict
 from app.schemas.port import PortSpec
 from app.schemas.vessel import VesselSpec
+from app.utils.port_congestion import get_port_congestion
 
 # USD to INR Conversion Benchmark
 USD_TO_INR_RATE: float = 83.5
@@ -93,6 +94,7 @@ VESSEL_SPECS: Dict[str, VesselSpec] = {
 
 # -------------------------------------------------------------
 # PORT SPECIFICATIONS (5 EAST COAST INDIAN PORTS)
+# Congestion computed dynamically from traffic history & capacity utilization
 # -------------------------------------------------------------
 PORT_SPECS: Dict[str, PortSpec] = {
     "Paradip": PortSpec(
@@ -103,7 +105,7 @@ PORT_SPECS: Dict[str, PortSpec] = {
         max_draft=16.5,
         max_loa=285.0,
         max_beam=48.0,
-        congestion="Medium",
+        congestion=get_port_congestion("Paradip"),
         berthing_wait_days=2.4,
         handling_rate_mt_per_day=38000.0,
         handling_rating=4.2,
@@ -120,7 +122,7 @@ PORT_SPECS: Dict[str, PortSpec] = {
         max_draft=18.5,
         max_loa=310.0,
         max_beam=52.0,
-        congestion="Low",
+        congestion=get_port_congestion("Dhamra"),
         berthing_wait_days=1.1,
         handling_rate_mt_per_day=55000.0,
         handling_rating=4.8,
@@ -137,7 +139,7 @@ PORT_SPECS: Dict[str, PortSpec] = {
         max_draft=16.5,
         max_loa=280.0,
         max_beam=44.0,
-        congestion="Medium",
+        congestion=get_port_congestion("Vizag"),
         berthing_wait_days=2.9,
         handling_rate_mt_per_day=32000.0,
         handling_rating=4.0,
@@ -154,7 +156,7 @@ PORT_SPECS: Dict[str, PortSpec] = {
         max_draft=8.8,
         max_loa=195.0,
         max_beam=30.5,
-        congestion="High",
+        congestion=get_port_congestion("Haldia"),
         berthing_wait_days=5.2,
         handling_rate_mt_per_day=16500.0,
         handling_rating=3.2,
@@ -171,7 +173,7 @@ PORT_SPECS: Dict[str, PortSpec] = {
         max_draft=7.6,
         max_loa=172.0,
         max_beam=25.0,
-        congestion="Critical",
+        congestion=get_port_congestion("Kolkata"),
         berthing_wait_days=6.5,
         handling_rate_mt_per_day=10500.0,
         handling_rating=2.8,

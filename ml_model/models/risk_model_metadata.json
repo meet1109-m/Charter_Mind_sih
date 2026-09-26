@@ -1,0 +1,107 @@
+{
+  "model_name": "Gradient_Boosting",
+  "pipeline_type": "GradientBoostingRegressor",
+  "version": "1.0.0",
+  "model_characterization": "supervised learned predictive regression model over domain-structured labels with operational variance",
+  "linearity_diagnostic": {
+    "is_near_exact_formula": false,
+    "component_coefficients": {
+      "market_risk_score": 0.2573,
+      "congestion_risk_score": 0.3026,
+      "physical_clearance_risk_score": 0.2519,
+      "weather_hazard_risk_score": 0.2015
+    },
+    "intercept": -0.3338,
+    "r2_score": 0.9143,
+    "mae": 2.3841,
+    "rmse": 3.0044
+  },
+  "target": "composite_risk_score_0_100",
+  "training_samples": 2446,
+  "features": {
+    "categorical": [
+      "port_name",
+      "vessel_class",
+      "weather_condition",
+      "freight_hedge_status"
+    ],
+    "numerical": [
+      "voyage_month",
+      "forecast_volatility_signal",
+      "port_traffic_zscore",
+      "ukc_margin_m",
+      "cyclone_seasonality_base_risk"
+    ],
+    "all_features": [
+      "port_name",
+      "vessel_class",
+      "weather_condition",
+      "freight_hedge_status",
+      "voyage_month",
+      "forecast_volatility_signal",
+      "port_traffic_zscore",
+      "ukc_margin_m",
+      "cyclone_seasonality_base_risk"
+    ]
+  },
+  "test_holdout_metrics": {
+    "mae": 2.656,
+    "rmse": 3.326,
+    "mape": 13.36,
+    "r2": 0.8994
+  },
+  "candidate_models_benchmark": {
+    "Ridge": {
+      "mae": 3.12,
+      "rmse": 3.888,
+      "mape": 14.46,
+      "r2": 0.8625
+    },
+    "Linear_Regression": {
+      "mae": 3.118,
+      "rmse": 3.888,
+      "mape": 14.44,
+      "r2": 0.8625
+    },
+    "Random_Forest": {
+      "mae": 3.423,
+      "rmse": 4.266,
+      "mape": 16.77,
+      "r2": 0.8345
+    },
+    "Gradient_Boosting": {
+      "mae": 2.656,
+      "rmse": 3.326,
+      "mape": 13.36,
+      "r2": 0.8994
+    }
+  },
+  "cross_validation_5fold": {
+    "Ridge": {
+      "cv_mae": 3.047,
+      "cv_rmse": 3.866,
+      "cv_r2": 0.8554
+    },
+    "Linear_Regression": {
+      "cv_mae": 3.048,
+      "cv_rmse": 3.866,
+      "cv_r2": 0.8554
+    },
+    "Random_Forest": {
+      "cv_mae": 3.265,
+      "cv_rmse": 4.16,
+      "cv_r2": 0.8324
+    },
+    "Gradient_Boosting": {
+      "cv_mae": 2.709,
+      "cv_rmse": 3.407,
+      "cv_r2": 0.8878
+    }
+  },
+  "dataset_statistics": {
+    "mean_composite_risk": 28.56,
+    "std_composite_risk": 10.26,
+    "min_composite_risk": 0.6,
+    "max_composite_risk": 62.7
+  }
+}

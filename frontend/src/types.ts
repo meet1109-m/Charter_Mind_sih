@@ -143,6 +143,11 @@ export interface RiskEngineResult {
   draftRisk?: number;
 }
 
+export interface HistoricalBdiPoint {
+  date: string;
+  bdi: number;
+}
+
 export interface ForecastDataPoint {
   date: string;
   dayIndex: number;
@@ -160,9 +165,10 @@ export interface ForecastResult {
   projectedRate30d: number;
   trend: 'Rising' | 'Falling' | 'Stable';
   trendPercent: number;
-  confidenceScore: number; // e.g. 88%
+  confidenceScore: number; // Rule-based forecast reliability indicator (0-100) reflecting route, vessel, and operating risks
   horizonDays: 7 | 14 | 30 | 60;
   dataPoints: ForecastDataPoint[];
+  historicalBdi?: HistoricalBdiPoint[];
   featureContributions: {
     factor: string;
     contributionPercent: number; // e.g. +18% or -9%

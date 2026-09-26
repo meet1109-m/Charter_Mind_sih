@@ -23,6 +23,7 @@ from app.schemas.forecast import (
     ForecastHorizon,
     ForecastRequest,
     ForecastResult,
+    HistoricalBdiPoint,
     OptimalCharterWindow,
     TrendDirection,
 )
@@ -105,6 +106,7 @@ __all__ = [
     "CharterRecommendation",
     "ForecastHorizon",
     "ForecastDataPoint",
+    "HistoricalBdiPoint",
     "FeatureContribution",
     "OptimalCharterWindow",
     "ForecastResult",

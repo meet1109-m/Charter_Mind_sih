@@ -1,0 +1,88 @@
+{
+  "model_name": "Linear_Regression",
+  "pipeline_type": "LinearRegression",
+  "version": "1.0.0",
+  "target": "pre_berthing_wait_hours",
+  "target_units": "hours",
+  "training_samples": 2990,
+  "features": {
+    "categorical": [
+      "vessel_class",
+      "port_name",
+      "weather_condition"
+    ],
+    "numerical": [
+      "dwt",
+      "voyage_month",
+      "is_monsoon_period"
+    ],
+    "all_features": [
+      "vessel_class",
+      "port_name",
+      "weather_condition",
+      "dwt",
+      "voyage_month",
+      "is_monsoon_period"
+    ]
+  },
+  "test_holdout_metrics": {
+    "mae": 13.629,
+    "rmse": 19.302,
+    "mape": 34.32,
+    "r2": 0.6069
+  },
+  "candidate_models_benchmark": {
+    "Ridge": {
+      "mae": 13.618,
+      "rmse": 19.309,
+      "mape": 34.26,
+      "r2": 0.6067
+    },
+    "Linear_Regression": {
+      "mae": 13.629,
+      "rmse": 19.302,
+      "mape": 34.32,
+      "r2": 0.6069
+    },
+    "Random_Forest": {
+      "mae": 14.38,
+      "rmse": 21.611,
+      "mape": 34.42,
+      "r2": 0.5073
+    },
+    "Gradient_Boosting": {
+      "mae": 13.467,
+      "rmse": 20.116,
+      "mape": 32.44,
+      "r2": 0.5731
+    }
+  },
+  "cross_validation_5fold": {
+    "Ridge": {
+      "cv_mae": 13.029,
+      "cv_rmse": 18.803,
+      "cv_r2": 0.5998
+    },
+    "Linear_Regression": {
+      "cv_mae": 13.051,
+      "cv_rmse": 18.803,
+      "cv_r2": 0.5998
+    },
+    "Random_Forest": {
+      "cv_mae": 13.333,
+      "cv_rmse": 19.87,
+      "cv_r2": 0.5534
+    },
+    "Gradient_Boosting": {
+      "cv_mae": 12.655,
+      "cv_rmse": 18.709,
+      "cv_r2": 0.6041
+    }
+  },
+  "dataset_statistics": {
+    "mean_wait_hours": 42.74,
+    "std_wait_hours": 30.04,
+    "min_wait_hours": 6.2,
+    "max_wait_hours": 240.0
+  }
+}

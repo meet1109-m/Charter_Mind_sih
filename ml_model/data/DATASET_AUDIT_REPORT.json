@@ -233,7 +233,10 @@
       "total_loaded": "float64",
       "total_traffic": "int64"
     },
-    "date_range": null,
+    "date_range": {
+      "min": "2005-06-01",
+      "max": "2011-12-01"
+    },
     "missing_values": 0,
     "missing_by_col": {
       "port": 0,
@@ -284,5 +287,431 @@
       "avg_ratio_to_capesize"
     ],
     "notes": "Standard industry benchmark ratios relative to Capesize (Handysize 0.282, Supramax 0.489, Panamax 0.605)."
+  },
+  "bunker_price_monthly.csv": {
+    "filename": "bunker_price_monthly.csv",
+    "rows": 86,
+    "columns": 2,
+    "column_names": [
+      "date",
+      "singapore_vlsfo_usd_per_mt"
+    ],
+    "dtypes": {
+      "date": "str",
+      "singapore_vlsfo_usd_per_mt": "float64"
+    },
+    "date_range": {
+      "min": "2019-07-01",
+      "max": "2026-08-01"
+    },
+    "missing_values": 0,
+    "missing_by_col": {
+      "date": 0,
+      "singapore_vlsfo_usd_per_mt": 0
+    },
+    "duplicates": 0,
+    "task_type": "Time-Series Fuel Price Feature",
+    "target_variable": "singapore_vlsfo_usd_per_mt",
+    "notes": "Monthly historical benchmark bunker fuel prices (VLSFO / IFO380 / MGO).",
+    "useful_features": [
+      "date"
+    ]
+  },
+  "national_port_traffic_monthly_FY23-25.csv": {
+    "filename": "national_port_traffic_monthly_FY23-25.csv",
+    "rows": 36,
+    "columns": 5,
+    "column_names": [
+      "fiscal_year",
+      "calendar_year",
+      "month",
+      "month_name",
+      "national_traffic_all_12_ports_million_tonnes"
+    ],
+    "dtypes": {
+      "fiscal_year": "str",
+      "calendar_year": "int64",
+      "month": "int64",
+      "month_name": "str",
+      "national_traffic_all_12_ports_million_tonnes": "float64"
+    },
+    "date_range": {
+      "min": "2022-23",
+      "max": "2024-25"
+    },
+    "missing_values": 0,
+    "missing_by_col": {
+      "fiscal_year": 0,
+      "calendar_year": 0,
+      "month": 0,
+      "month_name": 0,
+      "national_traffic_all_12_ports_million_tonnes": 0
+    },
+    "duplicates": 0,
+    "task_type": "Statistical Throughput & Capacity Monitoring",
+    "target_variable": null,
+    "notes": "National and regional monthly port cargo throughput statistics.",
+    "useful_features": [
+      "fiscal_year",
+      "calendar_year",
+      "month",
+      "month_name",
+      "national_traffic_all_12_ports_million_tonnes"
+    ]
+  },
+  "route_freight_rate_training_set.csv": {
+    "filename": "route_freight_rate_training_set.csv",
+    "rows": 8700,
+    "columns": 9,
+    "column_names": [
+      "quarter",
+      "origin_country",
+      "destination_port",
+      "cargo_type",
+      "vessel_class",
+      "distance_nm",
+      "bdi_index_quarter_avg",
+      "bunker_price_quarter_avg_usd_per_mt",
+      "rate_usd_per_tonne"
+    ],
+    "dtypes": {
+      "quarter": "str",
+      "origin_country": "str",
+      "destination_port": "str",
+      "cargo_type": "str",
+      "vessel_class": "str",
+      "distance_nm": "int64",
+      "bdi_index_quarter_avg": "float64",
+      "bunker_price_quarter_avg_usd_per_mt": "float64",
+      "rate_usd_per_tonne": "float64"
+    },
+    "date_range": null,
+    "missing_values": 0,
+    "missing_by_col": {
+      "quarter": 0,
+      "origin_country": 0,
+      "destination_port": 0,
+      "cargo_type": 0,
+      "vessel_class": 0,
+      "distance_nm": 0,
+      "bdi_index_quarter_avg": 0,
+      "bunker_price_quarter_avg_usd_per_mt": 0,
+      "rate_usd_per_tonne": 0
+    },
+    "duplicates": 0,
+    "task_type": "Supervised Freight Rate Prediction",
+    "target_variable": null,
+    "notes": "Trade corridor origin-destination freight rate observations across global routes.",
+    "useful_features": [
+      "quarter",
+      "origin_country",
+      "destination_port",
+      "cargo_type",
+      "vessel_class",
+      "distance_nm",
+      "bdi_index_quarter_avg",
+      "bunker_price_quarter_avg_usd_per_mt",
+      "rate_usd_per_tonne"
+    ]
+  },
+  "vessel_port_call_records.csv": {
+    "filename": "vessel_port_call_records.csv",
+    "rows": 2990,
+    "columns": 12,
+    "column_names": [
+      "record_id",
+      "vessel_id",
+      "vessel_class",
+      "dwt",
+      "vessel_draft_m",
+      "port_name",
+      "voyage_month",
+      "is_monsoon_period",
+      "weather_condition",
+      "pre_berthing_wait_hours",
+      "demurrage_rate_usd_per_day",
+      "estimated_demurrage_usd"
+    ],
+    "dtypes": {
+      "record_id": "str",
+      "vessel_id": "str",
+      "vessel_class": "str",
+      "dwt": "int64",
+      "vessel_draft_m": "float64",
+      "port_name": "str",
+      "voyage_month": "int64",
+      "is_monsoon_period": "bool",
+      "weather_condition": "str",
+      "pre_berthing_wait_hours": "float64",
+      "demurrage_rate_usd_per_day": "int64",
+      "estimated_demurrage_usd": "float64"
+    },
+    "date_range": {
+      "min": "1970-01-01",
+      "max": "1970-01-01"
+    },
+    "missing_values": 0,
+    "missing_by_col": {
+      "record_id": 0,
+      "vessel_id": 0,
+      "vessel_class": 0,
+      "dwt": 0,
+      "vessel_draft_m": 0,
+      "port_name": 0,
+      "voyage_month": 0,
+      "is_monsoon_period": 0,
+      "weather_condition": 0,
+      "pre_berthing_wait_hours": 0,
+      "demurrage_rate_usd_per_day": 0,
+      "estimated_demurrage_usd": 0
+    },
+    "duplicates": 0,
+    "task_type": "Operational Port Calls & Turnaround Analytics",
+    "target_variable": null,
+    "notes": "Vessel port call arrivals, berthing delays, and cargo discharge records.",
+    "useful_features": [
+      "record_id",
+      "vessel_id",
+      "vessel_class",
+      "dwt",
+      "vessel_draft_m",
+      "port_name",
+      "voyage_month",
+      "is_monsoon_period",
+      "weather_condition",
+      "pre_berthing_wait_hours",
+      "demurrage_rate_usd_per_day",
+      "estimated_demurrage_usd"
+    ]
+  },
+  "vessel_registry_500.csv": {
+    "filename": "vessel_registry_500.csv",
+    "rows": 500,
+    "columns": 12,
+    "column_names": [
+      "vessel_id",
+      "imo_like_id",
+      "vessel_class",
+      "dwt",
+      "loa_m",
+      "beam_m",
+      "draft_m",
+      "service_speed_knots",
+      "fuel_consumption_laden_mt_day",
+      "build_year",
+      "age_years",
+      "flag_state"
+    ],
+    "dtypes": {
+      "vessel_id": "str",
+      "imo_like_id": "int64",
+      "vessel_class": "str",
+      "dwt": "int64",
+      "loa_m": "float64",
+      "beam_m": "float64",
+      "draft_m": "float64",
+      "service_speed_knots": "float64",
+      "fuel_consumption_laden_mt_day": "float64",
+      "build_year": "int64",
+      "age_years": "int64",
+      "flag_state": "str"
+    },
+    "date_range": {
+      "min": "1970-01-01",
+      "max": "1970-01-01"
+    },
+    "missing_values": 0,
+    "missing_by_col": {
+      "vessel_id": 0,
+      "imo_like_id": 0,
+      "vessel_class": 0,
+      "dwt": 0,
+      "loa_m": 0,
+      "beam_m": 0,
+      "draft_m": 0,
+      "service_speed_knots": 0,
+      "fuel_consumption_laden_mt_day": 0,
+      "build_year": 0,
+      "age_years": 0,
+      "flag_state": 0
+    },
+    "duplicates": 0,
+    "task_type": "Vessel Fleet Master Data",
+    "target_variable": null,
+    "notes": "500-vessel commercial registry with physical dimensions, DWT, and efficiency ratings.",
+    "useful_features": [
+      "vessel_id",
+      "imo_like_id",
+      "vessel_class",
+      "dwt",
+      "loa_m",
+      "beam_m",
+      "draft_m",
+      "service_speed_knots",
+      "fuel_consumption_laden_mt_day",
+      "build_year",
+      "age_years",
+      "flag_state"
+    ]
+  },
+  "voyage_economics_training_set.csv": {
+    "filename": "voyage_economics_training_set.csv",
+    "rows": 4000,
+    "columns": 14,
+    "column_names": [
+      "record_id",
+      "vessel_class",
+      "distance_nm",
+      "cargo_tonnes",
+      "bunker_price_usd_per_mt",
+      "port_days",
+      "steaming_days",
+      "sea_fuel_cost_usd",
+      "port_fuel_cost_usd",
+      "estimated_port_dues_usd",
+      "total_voyage_cost_usd",
+      "freight_rate_usd_per_tonne",
+      "gross_freight_usd",
+      "tce_usd_per_day"
+    ],
+    "dtypes": {
+      "record_id": "str",
+      "vessel_class": "str",
+      "distance_nm": "float64",
+      "cargo_tonnes": "float64",
+      "bunker_price_usd_per_mt": "float64",
+      "port_days": "float64",
+      "steaming_days": "float64",
+      "sea_fuel_cost_usd": "float64",
+      "port_fuel_cost_usd": "float64",
+      "estimated_port_dues_usd": "float64",
+      "total_voyage_cost_usd": "float64",
+      "freight_rate_usd_per_tonne": "float64",
+      "gross_freight_usd": "float64",
+      "tce_usd_per_day": "float64"
+    },
+    "date_range": null,
+    "missing_values": 0,
+    "missing_by_col": {
+      "record_id": 0,
+      "vessel_class": 0,
+      "distance_nm": 0,
+      "cargo_tonnes": 0,
+      "bunker_price_usd_per_mt": 0,
+      "port_days": 0,
+      "steaming_days": 0,
+      "sea_fuel_cost_usd": 0,
+      "port_fuel_cost_usd": 0,
+      "estimated_port_dues_usd": 0,
+      "total_voyage_cost_usd": 0,
+      "freight_rate_usd_per_tonne": 0,
+      "gross_freight_usd": 0,
+      "tce_usd_per_day": 0
+    },
+    "duplicates": 0,
+    "task_type": "Regression & Voyage Cost Accounting",
+    "target_variable": null,
+    "notes": "Comprehensive voyage economics, fuel consumption, and charter profitability records.",
+    "useful_features": [
+      "record_id",
+      "vessel_class",
+      "distance_nm",
+      "cargo_tonnes",
+      "bunker_price_usd_per_mt",
+      "port_days",
+      "steaming_days",
+      "sea_fuel_cost_usd",
+      "port_fuel_cost_usd",
+      "estimated_port_dues_usd",
+      "total_voyage_cost_usd",
+      "freight_rate_usd_per_tonne",
+      "gross_freight_usd",
+      "tce_usd_per_day"
+    ]
+  },
+  "voyage_risk_training_set.csv": {
+    "filename": "voyage_risk_training_set.csv",
+    "rows": 2446,
+    "columns": 16,
+    "column_names": [
+      "record_id",
+      "port_name",
+      "vessel_class",
+      "voyage_month",
+      "weather_condition",
+      "freight_hedge_status",
+      "forecast_volatility_signal",
+      "market_risk_score",
+      "port_traffic_zscore",
+      "congestion_risk_score",
+      "ukc_margin_m",
+      "physical_clearance_risk_score",
+      "cyclone_seasonality_base_risk",
+      "weather_hazard_risk_score",
+      "composite_risk_score_0_100",
+      "risk_level"
+    ],
+    "dtypes": {
+      "record_id": "str",
+      "port_name": "str",
+      "vessel_class": "str",
+      "voyage_month": "int64",
+      "weather_condition": "str",
+      "freight_hedge_status": "str",
+      "forecast_volatility_signal": "float64",
+      "market_risk_score": "float64",
+      "port_traffic_zscore": "float64",
+      "congestion_risk_score": "float64",
+      "ukc_margin_m": "float64",
+      "physical_clearance_risk_score": "float64",
+      "cyclone_seasonality_base_risk": "int64",
+      "weather_hazard_risk_score": "float64",
+      "composite_risk_score_0_100": "float64",
+      "risk_level": "str"
+    },
+    "date_range": {
+      "min": "1970-01-01",
+      "max": "1970-01-01"
+    },
+    "missing_values": 0,
+    "missing_by_col": {
+      "record_id": 0,
+      "port_name": 0,
+      "vessel_class": 0,
+      "voyage_month": 0,
+      "weather_condition": 0,
+      "freight_hedge_status": 0,
+      "forecast_volatility_signal": 0,
+      "market_risk_score": 0,
+      "port_traffic_zscore": 0,
+      "congestion_risk_score": 0,
+      "ukc_margin_m": 0,
+      "physical_clearance_risk_score": 0,
+      "cyclone_seasonality_base_risk": 0,
+      "weather_hazard_risk_score": 0,
+      "composite_risk_score_0_100": 0,
+      "risk_level": 0
+    },
+    "duplicates": 0,
+    "task_type": "Classification & Multi-Factor Risk Assessment",
+    "target_variable": "risk_level",
+    "notes": "Supervised dataset for voyage multi-vector risk and BIMCO clause assessment.",
+    "useful_features": [
+      "record_id",
+      "port_name",
+      "vessel_class",
+      "voyage_month",
+      "weather_condition",
+      "freight_hedge_status",
+      "forecast_volatility_signal",
+      "market_risk_score",
+      "port_traffic_zscore",
+      "congestion_risk_score",
+      "ukc_margin_m",
+      "physical_clearance_risk_score",
+      "cyclone_seasonality_base_risk",
+      "weather_hazard_risk_score",
+      "composite_risk_score_0_100"
+    ]
   }
 }

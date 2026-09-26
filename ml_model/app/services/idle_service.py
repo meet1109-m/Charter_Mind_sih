@@ -8,7 +8,84 @@ Rule-based / hybrid statistical estimation because no audited vessel-by-vessel
 waiting-time log target exists in historical public port datasets.
 """
 
+import math
 from typing import Dict, Any
+
+
+def erlang_c_queue_wait_hours(
+    c: int,
+    utilization: float,
+    service_time_hours: float = 36.0,
+) -> float:
+    """
+    Computes expected queue waiting time W_q (in hours) for an M/M/c queueing model (Erlang-C formula).
+    
+    Parameters:
+    - c: Number of available parallel berths (servers)
+    - utilization (rho = lambda / (c * mu)): Berth traffic utilization factor (0.0 < rho < 1.0)
+    - service_time_hours (1 / mu): Mean vessel handling/discharge service duration in hours
+    """
+    c = max(1, int(c))
+    rho = min(0.98, max(0.05, float(utilization)))
+    a = c * rho  # Offered traffic intensity a = lambda / mu
+
+    # Compute P0 (probability that all berths are empty)
+    # sum_{k=0}^{c-1} (a^k / k!) + (a^c / (c! * (1 - rho)))
+    sum_terms = sum((a**k) / math.factorial(k) for k in range(c))
+    c_term = (a**c) / (math.factorial(c) * (1.0 - rho))
+    p0 = 1.0 / (sum_terms + c_term)
+
+    # Probability of queueing (Erlang-C formula P(W > 0))
+    p_wait = c_term * p0
+
+    # Expected waiting time in queue before berthing: W_q = P(W > 0) / (c * mu * (1 - rho))
+    # where mu = 1 / service_time_hours
+    w_q = (p_wait * service_time_hours) / (c * (1.0 - rho))
+    return max(0.0, float(w_q))
+
+
+def compute_congestion_hours(
+    port_name: str,
+    congestion_level: str = "Medium",
+    berths: int = 4,
+    service_time_hours: float = 36.0,
+) -> float:
+    """
+    Calculates congestion wait delta hours using M/M/c queueing (Erlang-C) modeling.
+    Utilization (rho) is calibrated based on active port congestion level:
+    - Low: rho ~ 0.48 -> Low queueing delay
+    - Medium: rho ~ 0.72 -> Moderate queueing delay
+    - High: rho ~ 0.88 -> Elevated queueing delay
+    - Critical: rho ~ 0.96 -> Severe queueing delay near capacity
+    """
+    utilization_map = {
+        "Low": 0.48,
+        "Medium": 0.72,
+        "High": 0.88,
+        "Critical": 0.96,
+    }
+    rho = utilization_map.get(congestion_level, 0.70)
+
+    port_berths_map = {
+        "Paradip": 6,
+        "Visakhapatnam": 6,
+        "Vizag": 6,
+        "Dhamra": 4,
+        "Chennai": 5,
+        "Kolkata": 3,
+        "Haldia": 4,
+        "Kakinada": 4,
+    }
+    c = port_berths_map.get(port_name, berths)
+
+    # Baseline nominal waiting time at rho=0.60
+    base_wait = erlang_c_queue_wait_hours(c, 0.60, service_time_hours)
+    # Actual waiting time at active congestion utilization rho
+    actual_wait = erlang_c_queue_wait_hours(c, rho, service_time_hours)
+
+    # Congestion delta relative to baseline
+    congestion_delta = actual_wait - base_wait
+    return round(congestion_delta, 1)
 
 
 class IdleService:

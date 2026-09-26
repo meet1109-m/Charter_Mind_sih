@@ -43,6 +43,13 @@ class OptimalCharterWindow(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class HistoricalBdiPoint(BaseModel):
+    date: str = Field(..., description="Monthly observation date (YYYY-MM-DD)")
+    bdi: float = Field(..., description="Baltic Dry Index (BDI) price / benchmark value")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ForecastResult(BaseModel):
     route: str = Field(..., description="Trade corridor name (e.g. Indonesia -> Paradip)")
     current_rate: float = Field(..., description="Current spot benchmark rate (USD/MT)")
@@ -50,9 +57,10 @@ class ForecastResult(BaseModel):
     projected_rate_30d: float = Field(..., description="Projected rate at +30 days (USD/MT)")
     trend: TrendDirection = Field(..., description="Predicted freight trajectory")
     trend_percent: float = Field(..., description="Anticipated price shift percentage (%)")
-    confidence_score: float = Field(..., ge=0.0, le=100.0, description="Model forecast confidence score (0-100)")
+    confidence_score: float = Field(..., ge=0.0, le=100.0, description="Rule-based forecast reliability indicator (0-100) reflecting known route, vessel elasticity, and operational risk adjustments")
     horizon_days: int = Field(..., description="Forecast horizon period in days")
     data_points: List[ForecastDataPoint] = Field(default_factory=list)
+    historical_bdi: List[HistoricalBdiPoint] = Field(default_factory=list, description="Genuine monthly Baltic Dry Index historical observations")
     feature_contributions: List[FeatureContribution] = Field(default_factory=list)
     net_expected_change_percent: float = Field(...)
     optimal_charter_window: Optional[OptimalCharterWindow] = None

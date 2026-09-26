@@ -50,7 +50,7 @@ export const DashboardView: React.FC = () => {
 
   // Mini sparkline data matching the active forecast horizon and corridor
   const sparklineData = forecast.dataPoints
-    .filter((p) => p.dayIndex >= -15 && p.dayIndex <= Math.min(forecast.horizonDays, 30))
+    .filter((p) => p.dayIndex >= 0 && p.dayIndex <= Math.min(forecast.horizonDays, 30))
     .map((p) => ({
       date: p.date.slice(5),
       rate: p.predicted,

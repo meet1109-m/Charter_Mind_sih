@@ -15,6 +15,7 @@ from app.schemas.forecast import (
     FeatureContribution,
     ForecastDataPoint,
     ForecastResult,
+    HistoricalBdiPoint,
     OptimalCharterWindow,
     TrendDirection,
 )
@@ -36,6 +37,11 @@ FEATURE_COLUMNS = [
     "rolling_std_6",
     "momentum_3",
     "pct_change_1",
+    "bunker_lag_1",
+    "bunker_lag_2",
+    "bunker_rolling_mean_3",
+    "bunker_rolling_mean_6",
+    "bunker_pct_change_1",
     "month",
     "quarter",
     "sin_month",
@@ -122,6 +128,14 @@ class MLModelManager:
         self.metadata: Dict[str, Any] = {}
         self.vessel_models: Dict[str, Any] = {}
         self.historical_bdi: List[float] = []
+        self.historical_bdi_records: List[Dict[str, Any]] = []
+        self.risk_model = None
+        self.risk_metadata: Dict[str, Any] = {}
+        self.idle_model = None
+        self.idle_metadata: Dict[str, Any] = {}
+        self.vessel_registry_stats: Dict[str, Dict[str, Any]] = {}
+        self.route_rate_model = None
+        self.route_rate_metadata: Dict[str, Any] = {}
         self.load_model()
 
     @classmethod
@@ -161,11 +175,30 @@ class MLModelManager:
                         df["Price"].astype(str).str.replace(",", "").astype(float)
                     )
                     self.historical_bdi = clean_price.tolist()
+                    if "Date" in df.columns:
+                        self.historical_bdi_records = [
+                            {"date": str(row["Date"]), "bdi": float(str(row["Price"]).replace(",", ""))}
+                            for _, row in df.iterrows()
+                        ]
+                    else:
+                        self.historical_bdi_records = [{"date": f"M-{i}", "bdi": p} for i, p in enumerate(self.historical_bdi)]
                     logger.debug(f"Loaded {len(self.historical_bdi)} historical BDI observations from: {historical_data_path}")
         except Exception as err:
             logger.warning(f"Notice: Could not load historical BDI series ({err})")
 
-        # 4. Load Primary Ridge Forecasting Model (with lightweight fallback)
+        # 4. Load Historical Bunker Fuel Price Benchmark Data
+        self.historical_bunker: List[float] = []
+        try:
+            bunker_data_path = _resolve_ml_artifact("bunker_price_monthly.csv", "data")
+            if bunker_data_path.exists():
+                df_b = pd.read_csv(bunker_data_path)
+                p_col = next((c for c in df_b.columns if "price" in c.lower() or "vlsfo" in c.lower()), df_b.columns[1])
+                self.historical_bunker = df_b[p_col].astype(float).tolist()
+                logger.debug(f"Loaded {len(self.historical_bunker)} bunker price observations from: {bunker_data_path}")
+        except Exception as err:
+            logger.debug(f"Notice: Could not load bunker price series ({err})")
+
+        # 5. Load Primary Ridge Forecasting Model (with lightweight fallback)
         try:
             model_path = _resolve_ml_artifact("bdi_forecast_model.joblib", "models")
             if model_path.exists():
@@ -187,6 +220,87 @@ class MLModelManager:
         except Exception as err:
             logger.error(f"Error initializing ML model manager: {err}")
 
+        # 6. Load Supervised Voyage Risk Assessment Model
+        try:
+            risk_metadata_path = _resolve_ml_artifact("risk_model_metadata.json", "models")
+            if risk_metadata_path.exists():
+                with open(risk_metadata_path, encoding="utf-8") as f:
+                    self.risk_metadata = json.load(f)
+                    logger.debug(f"Loaded ML risk model metadata from: {risk_metadata_path}")
+        except Exception as err:
+            logger.debug(f"Notice: Could not load risk_model_metadata.json ({err})")
+
+        try:
+            risk_model_path = _resolve_ml_artifact("risk_model.joblib", "models")
+            if risk_model_path.exists():
+                self.risk_model = joblib.load(risk_model_path)
+                logger.info(f"Loaded ML Risk Model from: {risk_model_path}")
+            else:
+                logger.warning(f"ML Risk Model binary not found at {risk_model_path}. Operating in rule-based fallback mode.")
+        except Exception as err:
+            logger.error(f"Error initializing ML risk model: {err}")
+
+        # 7. Load Supervised Port Idle Wait Time (Demurrage Queue) Model
+        try:
+            idle_metadata_path = _resolve_ml_artifact("idle_model_metadata.json", "models")
+            if idle_metadata_path.exists():
+                with open(idle_metadata_path, encoding="utf-8") as f:
+                    self.idle_metadata = json.load(f)
+                    logger.debug(f"Loaded ML idle model metadata from: {idle_metadata_path}")
+        except Exception as err:
+            logger.debug(f"Notice: Could not load idle_model_metadata.json ({err})")
+
+        try:
+            idle_model_path = _resolve_ml_artifact("idle_model.joblib", "models")
+            if idle_model_path.exists():
+                self.idle_model = joblib.load(idle_model_path)
+                logger.info(f"Loaded ML Idle Model from: {idle_model_path}")
+            else:
+                logger.warning(f"ML Idle Model binary not found at {idle_model_path}. Operating in queue-theory fallback mode.")
+        except Exception as err:
+            logger.error(f"Error initializing ML idle model: {err}")
+
+        # 8. Load Vessel Registry Statistics (500 Empirical Fleet Vessels)
+        self.vessel_registry_stats = {}
+        try:
+            reg_path = _resolve_ml_artifact("vessel_registry_500.csv", "data")
+            if reg_path.exists():
+                df_reg = pd.read_csv(reg_path)
+                total_fleet = len(df_reg)
+                for v_class in ["Capesize", "Panamax", "Supramax", "Handysize"]:
+                    sub = df_reg[df_reg["vessel_class"] == v_class]
+                    n_class = len(sub)
+                    n_aged = len(sub[sub["age_years"] > 15]) if "age_years" in sub.columns else 0
+                    self.vessel_registry_stats[v_class] = {
+                        "count": n_class,
+                        "aged_count": n_aged,
+                        "aged_ratio": n_aged / n_class if n_class > 0 else 0.0,
+                        "fleet_share": n_class / total_fleet if total_fleet > 0 else 0.0,
+                    }
+                logger.debug(f"Loaded vessel registry statistics for {len(self.vessel_registry_stats)} classes.")
+        except Exception as err:
+            logger.debug(f"Notice: Could not load vessel registry dataset ({err})")
+
+        # 9. Load Supervised Route Freight Rate Regression Model
+        try:
+            route_rate_metadata_path = _resolve_ml_artifact("route_rate_model_metadata.json", "models")
+            if route_rate_metadata_path.exists():
+                with open(route_rate_metadata_path, encoding="utf-8") as f:
+                    self.route_rate_metadata = json.load(f)
+                    logger.debug(f"Loaded ML route rate model metadata from: {route_rate_metadata_path}")
+        except Exception as err:
+            logger.debug(f"Notice: Could not load route_rate_model_metadata.json ({err})")
+
+        try:
+            route_rate_model_path = _resolve_ml_artifact("route_rate_model.joblib", "models")
+            if route_rate_model_path.exists():
+                self.route_rate_model = joblib.load(route_rate_model_path)
+                logger.info(f"Loaded ML Route Freight Rate Model from: {route_rate_model_path}")
+            else:
+                logger.warning(f"ML Route Rate Model binary not found at {route_rate_model_path}. Operating in beta-fallback mode.")
+        except Exception as err:
+            logger.error(f"Error initializing ML route rate model: {err}")
+
 
 def generate_forecast(
     route: str,
@@ -198,16 +312,44 @@ def generate_forecast(
 ) -> ForecastResult:
     """
     Generate ML freight rate time-series projections and market trend forecasts using the
-    trained Ridge Regression model (bdi_forecast_model.joblib), vessel elasticity models,
-    and corridor dynamics.
+    trained Ridge BDI Forecasting model (bdi_forecast_model.joblib) and the Supervised Route Freight
+    Rate Regression model (route_rate_model.joblib) predicting $/MT from corridor parameters.
     """
     manager = MLModelManager.get_instance()
     points: List[ForecastDataPoint] = []
     today = datetime.now(timezone.utc).date()
-    past_days = 30
 
     v_norm = (vessel_class or "Panamax").capitalize()
     c_norm = (cargo_type or "Coal").title()
+
+    # Normalize origin country and destination port from route string
+    r_lower = route.lower()
+    if "russia" in r_lower:
+        origin_country = "Russia"
+        default_dist = 6150
+    elif "south africa" in r_lower or "richards bay" in r_lower:
+        origin_country = "South Africa"
+        default_dist = 5120
+    elif "mozambique" in r_lower or "maputo" in r_lower:
+        origin_country = "Mozambique"
+        default_dist = 4600
+    elif "australia" in r_lower or "hay point" in r_lower or "newcastle" in r_lower or "gladstone" in r_lower:
+        origin_country = "Australia"
+        default_dist = 4400
+    else:
+        origin_country = "Indonesia"
+        default_dist = 2800
+
+    if "dhamra" in r_lower:
+        destination_port = "Dhamra"
+    elif "vizag" in r_lower or "visakhapatnam" in r_lower:
+        destination_port = "Vizag"
+    elif "haldia" in r_lower:
+        destination_port = "Haldia"
+    elif "kolkata" in r_lower:
+        destination_port = "Kolkata"
+    else:
+        destination_port = "Paradip"
 
     # Deterministic pseudo-random seed per corridor combination for reproducible realism
     seed_str = f"{route}_{v_norm}_{c_norm}_{horizon_days}"
@@ -215,7 +357,6 @@ def generate_forecast(
     rng = np.random.RandomState(seed)
 
     # 1. Vessel Class Elasticity & Beta
-    # Capesize has higher volatility beta (1.45), Handysize has lower (0.70)
     vessel_betas = {
         "Capesize": 1.42,
         "Panamax": 1.00,
@@ -224,9 +365,10 @@ def generate_forecast(
     }
     beta = vessel_betas.get(v_norm, 1.0)
 
-    # 2. Corridor Baseline & Historical Generation (past 30 days)
+    # 2. Corridor Baseline & Historical BDI Anchor
     bdi_history = list(manager.historical_bdi) if manager.historical_bdi else [2000.0] * 15
     last_known_bdi = bdi_history[-1] if bdi_history else 2000.0
+    last_bunker = manager.historical_bunker[-1] if manager.historical_bunker else 550.0
 
     current_val = base_rate
     if overrides and overrides.freight_rate_offset_percent:
@@ -241,30 +383,6 @@ def generate_forecast(
         "Indonesia": 0.016,
     }
     route_vol = next((v for k, v in route_volatilities.items() if k in route), 0.020) * beta
-
-    # Generate grounded historical 30-day random walk ending smoothly at current_val
-    hist_walk = [0.0]
-    for _ in range(past_days):
-        step = rng.normal(loc=0.001, scale=route_vol)
-        hist_walk.append(hist_walk[-1] + step)
-
-    # Re-center walk so day 0 lands exactly on current_val
-    terminal_offset = hist_walk[-1]
-    for idx, i in enumerate(range(past_days, 0, -1)):
-        d = today - timedelta(days=i)
-        walk_val = hist_walk[idx] - terminal_offset
-        past_val = max(4.5, round(current_val * (1.0 + walk_val), 2))
-        points.append(
-            ForecastDataPoint(
-                date=d.isoformat(),
-                day_index=-i,
-                is_forecast=False,
-                predicted=past_val,
-                historical=past_val,
-                lower_bound=past_val,
-                upper_bound=past_val,
-            )
-        )
 
     # 3. Future Projections via ML Ridge Model + Corridor Cycles
     sim_history = list(bdi_history)
@@ -299,6 +417,15 @@ def generate_forecast(
             sin_month = np.sin(2 * np.pi * target_month / 12.0)
             cos_month = np.cos(2 * np.pi * target_month / 12.0)
 
+            bunker_hist = manager.historical_bunker if manager.historical_bunker else [550.0] * 6
+            b_lag_1 = bunker_hist[-1]
+            b_lag_2 = bunker_hist[-2] if len(bunker_hist) >= 2 else b_lag_1
+            b_rolling_3 = bunker_hist[-3:]
+            b_rolling_6 = bunker_hist[-6:]
+            b_rolling_mean_3 = float(np.mean(b_rolling_3))
+            b_rolling_mean_6 = float(np.mean(b_rolling_6))
+            b_pct_change_1 = (b_lag_1 - b_lag_2) / (b_lag_2 + 1e-6)
+
             feat_dict = {
                 "lag_1": lag_1,
                 "lag_2": lag_2,
@@ -311,6 +438,11 @@ def generate_forecast(
                 "rolling_std_6": rolling_std_6,
                 "momentum_3": momentum_3,
                 "pct_change_1": pct_change_1,
+                "bunker_lag_1": b_lag_1,
+                "bunker_lag_2": b_lag_2,
+                "bunker_rolling_mean_3": b_rolling_mean_3,
+                "bunker_rolling_mean_6": b_rolling_mean_6,
+                "bunker_pct_change_1": b_pct_change_1,
                 "month": target_month,
                 "quarter": quarter,
                 "sin_month": sin_month,
@@ -331,7 +463,28 @@ def generate_forecast(
         "Bauxite": 0.004,
     }.get(c_norm, 0.01)
 
-    # Generate daily trajectory with Ridge macro trend + weekly chartering cycles + route texture
+    # Predict baseline rate at current BDI from the trained route freight rate model
+    def _predict_route_rate(bdi_val: float) -> float:
+        if manager.route_rate_model is not None:
+            try:
+                row_data = {
+                    "origin_country": origin_country,
+                    "destination_port": destination_port,
+                    "cargo_type": c_norm,
+                    "vessel_class": v_norm,
+                    "distance_nm": default_dist,
+                    "bdi_index_quarter_avg": float(bdi_val),
+                    "bunker_price_quarter_avg_usd_per_mt": float(last_bunker),
+                }
+                r_df = pd.DataFrame([row_data])
+                return float(manager.route_rate_model.predict(r_df)[0])
+            except Exception:
+                pass
+        return base_rate
+
+    rate_day_0_model = _predict_route_rate(last_known_bdi)
+
+    # Generate daily trajectory with trained ML Route Rate model + weekly cycles + route texture
     future_walk = 0.0
     for i in range(0, horizon_days + 1):
         d = today + timedelta(days=i)
@@ -339,11 +492,15 @@ def generate_forecast(
         if monthly_predictions:
             month_idx = min(len(monthly_predictions) - 1, int(i / 30.0))
             pred_target = monthly_predictions[month_idx]
-            # Macro Ridge model drift
-            bdi_ratio = pred_target / max(100.0, last_known_bdi)
-            macro_trend = (bdi_ratio - 1.0) * beta * (i / max(1.0, float(horizon_days)))
+            # Predict corridor freight rate using the trained ML model for the forecasted BDI level
+            rate_target_model = _predict_route_rate(pred_target)
+            if rate_day_0_model > 0.0:
+                model_ratio = rate_target_model / rate_day_0_model
+                macro_rate = current_val * (1.0 + (model_ratio - 1.0) * (i / max(1.0, float(horizon_days))))
+            else:
+                macro_rate = current_val
         else:
-            macro_trend = (i * 0.001)
+            macro_rate = current_val
 
         # Weekly fixture cycle wave (charter party 6-8 day fixing cycles)
         weekly_wave = np.sin((i + (seed % 7)) * 2 * np.pi / 7.0) * (0.012 * beta)
@@ -353,8 +510,8 @@ def generate_forecast(
         if i > 0:
             future_walk += rng.normal(0.0, route_vol * 0.35)
 
-        combined_pct = macro_trend + weekly_wave + seasonal_wave + future_walk
-        forecast_val = max(4.0, round(current_val * (1.0 + combined_pct), 2))
+        combined_pct = weekly_wave + seasonal_wave + future_walk
+        forecast_val = max(4.0, round(macro_rate * (1.0 + combined_pct), 2))
 
         # Expanding 90% confidence band (z = 1.645) from model walk-forward RMSE
         horizon_scaling = np.sqrt(max(0.08, i / 30.0))
@@ -375,11 +532,8 @@ def generate_forecast(
             )
         )
 
-    past_points = [p for p in points if not p.is_forecast]
-    future_points = [p for p in points if p.is_forecast]
-
-    start_rate = past_points[-1].predicted if past_points else base_rate
-    target_point = next((p for p in future_points if p.day_index == horizon_days), future_points[-1])
+    start_rate = current_val
+    target_point = next((p for p in points if p.day_index == horizon_days), points[-1] if points else None)
     end_rate = target_point.predicted if target_point else start_rate
 
     diff_percent = round(((end_rate - start_rate) / start_rate) * 100.0, 1) if start_rate > 0 else 0.0
@@ -390,11 +544,12 @@ def generate_forecast(
     else:
         trend = "Stable"
 
-    # 4. Dynamic AI Confidence Score Calculation (Unique per Horizon, Route, Vessel & Conditions)
+    # 4. Rule-Based Forecast Reliability Indicator Calculation
+    # Heuristic score based on baseline horizon decay and known corridor, vessel liquidity, commodity, and operating risk factors
     horizon_confidence_map = {7: 93.4, 14: 88.6, 30: 82.2, 60: 73.5}
     conf_calc = horizon_confidence_map.get(horizon_days, max(65.0, 94.0 - horizon_days * 0.35))
 
-    # Route distance & geopolitical complexity
+    # Route distance & geopolitical complexity adjustments
     if "Russia" in route:
         conf_calc -= 6.2
     elif "Mozambique" in route or "South Africa" in route:
@@ -404,7 +559,7 @@ def generate_forecast(
     elif "Australia" in route:
         conf_calc += 0.8
 
-    # Vessel class market liquidity & elasticity
+    # Vessel class market liquidity & elasticity adjustments
     if v_norm == "Capesize":
         conf_calc -= 3.5  # High volatility commodity freight
     elif v_norm == "Handysize":
@@ -412,7 +567,7 @@ def generate_forecast(
     elif v_norm == "Supramax":
         conf_calc += 0.8
 
-    # Commodity predictability
+    # Commodity predictability adjustments
     if c_norm == "Grain":
         conf_calc -= 2.2
     elif c_norm == "Bauxite":
@@ -420,7 +575,7 @@ def generate_forecast(
     elif c_norm == "Coal":
         conf_calc += 1.0
 
-    # Operational simulator overrides
+    # Operational simulator override adjustments
     if overrides:
         if overrides.congestion == "Critical":
             conf_calc -= 12.0
@@ -439,48 +594,60 @@ def generate_forecast(
 
     confidence_score = max(52.0, min(96.5, round(conf_calc, 1)))
 
-    importances = manager.metadata.get("feature_importances", {})
-    lag1_weight = importances.get("lag_1", 1.1666)
-    roll3_weight = importances.get("rolling_mean_3", 0.2377)
-    pct_weight = importances.get("pct_change_1", -206.2)
-    cos_weight = importances.get("cos_month", -70.02)
+    feature_descriptions = {
+        "lag_1": "1-month autoregressive lag coefficient",
+        "lag_2": "2-month autoregressive lag coefficient",
+        "lag_3": "3-month autoregressive lag coefficient",
+        "lag_6": "6-month autoregressive lag coefficient",
+        "lag_12": "12-month annual baseline autoregressive lag coefficient",
+        "rolling_mean_3": "3-month rolling average trend coefficient",
+        "rolling_mean_6": "6-month rolling average medium-term trend coefficient",
+        "rolling_std_3": "3-month short-term volatility rolling standard deviation coefficient",
+        "rolling_std_6": "6-month medium-term volatility rolling standard deviation coefficient",
+        "momentum_3": "3-month price velocity momentum coefficient",
+        "pct_change_1": "1-month short-term return mean reversion coefficient",
+        "bunker_lag_1": "1-month lag Singapore VLSFO bunker fuel price benchmark coefficient",
+        "bunker_lag_2": "2-month lag Singapore VLSFO bunker fuel price benchmark coefficient",
+        "bunker_rolling_mean_3": "3-month rolling average bunker fuel trend coefficient",
+        "bunker_rolling_mean_6": "6-month rolling average bunker fuel trend coefficient",
+        "bunker_pct_change_1": "1-month bunker fuel price rate-of-change coefficient",
+        "month": "Calendar month seasonality coefficient",
+        "quarter": "Quarterly trade cycle coefficient",
+        "sin_month": "Harmonic annual sinusoidal cycle coefficient",
+        "cos_month": "Harmonic annual cosinusoidal cycle coefficient",
+    }
 
+    feature_contributions: List[FeatureContribution] = []
+    if manager.model is not None and hasattr(manager.model, "coef_") and hasattr(manager.model, "feature_names_in_"):
+        for feat_name, coef_val in zip(manager.model.feature_names_in_, manager.model.coef_):
+            c_val = float(coef_val)
+            feature_contributions.append(
+                FeatureContribution(
+                    factor=str(feat_name),
+                    contribution_percent=round(c_val, 4),
+                    direction="up" if c_val >= 0 else "down",
+                    description=feature_descriptions.get(feat_name, f"Trained Ridge regression coefficient ({c_val:+.4f})"),
+                )
+            )
+    elif manager.metadata and "feature_importances" in manager.metadata:
+        for feat_name, c_val in manager.metadata["feature_importances"].items():
+            c_float = float(c_val)
+            feature_contributions.append(
+                FeatureContribution(
+                    factor=str(feat_name),
+                    contribution_percent=round(c_float, 4),
+                    direction="up" if c_float >= 0 else "down",
+                    description=feature_descriptions.get(feat_name, f"Trained Ridge regression coefficient ({c_float:+.4f})"),
+                )
+            )
 
-    feature_contributions = [
-        FeatureContribution(
-            factor="Baltic Dry Index Autoregressive Momentum (lag_1: +1.17)",
-            contribution_percent=round(min(35.0, max(12.0, abs(lag1_weight * 12.0))), 1),
-            direction="up" if lag1_weight >= 0 else "down",
-            description="Strong 1-month persistence learned from 25-year Baltic Exchange price cycle history.",
-        ),
-        FeatureContribution(
-            factor="3-Month Rolling Average Support (rolling_mean_3: +0.24)",
-            contribution_percent=18.5,
-            direction="up" if roll3_weight >= 0 else "down",
-            description="Medium-term commodity demand support across thermal coal & iron ore fixtures.",
-        ),
-        FeatureContribution(
-            factor="Short-Term Return Mean Reversion (pct_change_1: -206.2)",
-            contribution_percent=14.0,
-            direction="down" if pct_weight < 0 else "up",
-            description="L2-regularized dampener mitigating single-week speculative spikes back to equilibrium.",
-        ),
-        FeatureContribution(
-            factor="Bay of Bengal Seasonal Monsoon Cycle (cos_month: -70.0)",
-            contribution_percent=11.5,
-            direction="down" if cos_weight < 0 else "up",
-            description="Annual pre-monsoon and post-monsoon shipping slowdowns along the Indian East Coast.",
-        ),
-        FeatureContribution(
-            factor="Singapore Marine VLSFO Bunker Fuel Benchmark",
-            contribution_percent=9.0,
-            direction="up",
-            description="Bunker quotes ($615/MT) influencing vessel operator minimum Time Charter Equivalent.",
-        ),
-    ]
-
-    projected_14d_pt = next((p for p in future_points if p.day_index == 14), None)
+    projected_14d_pt = next((p for p in points if p.day_index == 14), None)
     projected_14d = projected_14d_pt.predicted if projected_14d_pt else round(start_rate * 1.02, 2)
+
+    hist_bdi_points = [
+        HistoricalBdiPoint(date=rec["date"], bdi=rec["bdi"])
+        for rec in manager.historical_bdi_records
+    ] if hasattr(manager, "historical_bdi_records") and manager.historical_bdi_records else []
 
     return ForecastResult(
         route=route,
@@ -492,6 +659,7 @@ def generate_forecast(
         confidence_score=confidence_score,
         horizon_days=horizon_days,
         data_points=points,
+        historical_bdi=hist_bdi_points,
         feature_contributions=feature_contributions,
         net_expected_change_percent=diff_percent,
     )
@@ -523,8 +691,8 @@ def determine_optimal_window(
         savings_usd = 0.0
         window_end = (today + timedelta(days=5)).strftime("%b %d")
         trade_off = (
-            f"Market volatility index is elevated ({risk_scores.overall_score}/100) with low forecast "
-            f"confidence ({forecast.confidence_score}%). Suggest splitting parcel into 50% spot or awaiting 72h stabilization."
+            f"Market volatility index is elevated ({risk_scores.overall_score}/100) with lower forecast "
+            f"reliability indicator ({forecast.confidence_score}%). Suggest splitting parcel into 50% spot or awaiting 72h stabilization."
         )
         rationale = "High probability of rate whiplash and severe demurrage exposure on prompt discharge."
     elif trend_percent < -2.0:

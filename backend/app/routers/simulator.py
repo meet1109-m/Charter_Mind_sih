@@ -9,6 +9,7 @@ from app.database import get_db
 from app.middleware.auth import get_current_user
 from app.models.cargo_request import CargoRequest
 from app.models.user import User
+from app.routers.alerts import check_and_create_operational_alerts
 from app.schemas.forecast import ForecastResult
 from app.schemas.idle import IdlePredictionResult
 from app.schemas.risk import RiskScoreResult
@@ -108,6 +109,17 @@ async def run_simulation(
     )
     route_name = f"{cargo.origin_country} → {cargo.destination_port}"
     forecast = generate_forecast(route_name, base_rate, 30, overrides)
+
+    # Automatically create operational alerts if risk breaches High/Critical or idle wait > 48h
+    await check_and_create_operational_alerts(
+        db=db,
+        user_id=current_user.id,
+        risk_scores=risk_scores,
+        idle_hours=idle_prediction.expected_idle_hours,
+        port_name=port.name,
+        origin_country=cargo.origin_country,
+        cargo_type=cargo.cargo_type,
+    )
 
     return SimulatorCombinedResponse(
         cargo_request_id=cargo.id,

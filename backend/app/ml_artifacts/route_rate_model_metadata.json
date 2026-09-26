@@ -1,0 +1,90 @@
+{
+  "model_name": "Gradient_Boosting",
+  "pipeline_type": "GradientBoostingRegressor",
+  "version": "1.0.0",
+  "target": "rate_usd_per_tonne",
+  "target_units": "USD/MT",
+  "training_samples": 8700,
+  "features": {
+    "categorical": [
+      "origin_country",
+      "destination_port",
+      "cargo_type",
+      "vessel_class"
+    ],
+    "numerical": [
+      "distance_nm",
+      "bdi_index_quarter_avg",
+      "bunker_price_quarter_avg_usd_per_mt"
+    ],
+    "all_features": [
+      "origin_country",
+      "destination_port",
+      "cargo_type",
+      "vessel_class",
+      "distance_nm",
+      "bdi_index_quarter_avg",
+      "bunker_price_quarter_avg_usd_per_mt"
+    ]
+  },
+  "test_holdout_metrics": {
+    "mae": 0.535,
+    "rmse": 0.838,
+    "mape": 3.55,
+    "r2": 0.9942
+  },
+  "candidate_models_benchmark": {
+    "Ridge": {
+      "mae": 2.265,
+      "rmse": 3.823,
+      "mape": 19.49,
+      "r2": 0.8794
+    },
+    "Linear_Regression": {
+      "mae": 2.265,
+      "rmse": 3.822,
+      "mape": 19.51,
+      "r2": 0.8794
+    },
+    "Random_Forest": {
+      "mae": 0.654,
+      "rmse": 1.079,
+      "mape": 4.08,
+      "r2": 0.9904
+    },
+    "Gradient_Boosting": {
+      "mae": 0.535,
+      "rmse": 0.838,
+      "mape": 3.55,
+      "r2": 0.9942
+    }
+  },
+  "cross_validation_5fold": {
+    "Ridge": {
+      "cv_mae": 2.221,
+      "cv_rmse": 3.455,
+      "cv_r2": 0.8854
+    },
+    "Linear_Regression": {
+      "cv_mae": 2.222,
+      "cv_rmse": 3.455,
+      "cv_r2": 0.8854
+    },
+    "Random_Forest": {
+      "cv_mae": 0.66,
+      "cv_rmse": 1.039,
+      "cv_r2": 0.9896
+    },
+    "Gradient_Boosting": {
+      "cv_mae": 0.53,
+      "cv_rmse": 0.792,
+      "cv_r2": 0.994
+    }
+  },
+  "dataset_statistics": {
+    "mean_rate_usd": 15.69,
+    "std_rate_usd": 10.38,
+    "min_rate_usd": 4.0,
+    "max_rate_usd": 97.91
+  }
+}

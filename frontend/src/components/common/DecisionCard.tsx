@@ -70,11 +70,11 @@ export const DecisionCard: React.FC<DecisionCardProps> = ({
           </div>
         </div>
 
-        {/* AI Confidence Meter */}
-        <div className="flex items-center gap-3">
+        {/* Forecast Reliability Indicator Meter */}
+        <div className="flex items-center gap-3" title="Rule-based indicator reflecting known route, vessel, and cargo risk factors rather than a machine-learned probability">
           <div className="text-right block">
             <div className="text-[10px] uppercase tracking-wider font-bold font-mono-data text-[#2B3342]">
-              AI Confidence
+              Reliability Indicator
             </div>
             <div className="text-base font-bold font-mono-data text-[#101828]">
               {forecast.confidenceScore}%
@@ -255,13 +255,13 @@ export const DecisionCard: React.FC<DecisionCardProps> = ({
         </div>
       </div>
 
-      {/* Low Confidence Banner (Conditional) */}
+      {/* Low Reliability Banner (Conditional) */}
       {isLowConfidence && (
         <div className="mb-5 p-4 rounded-xl bg-[#F59E0B]/20 border border-[#F59E0B]/35 flex items-start gap-3 text-[#101828]">
           <AlertTriangle className="w-5 h-5 text-[#A36907] shrink-0 mt-0.5" />
           <div className="text-xs sm:text-sm">
             <span className="font-bold">Elevated Market Uncertainty Detected: </span>
-            Forecast confidence is at {forecast.confidenceScore}%. Consider hedging with a split fixture (50% spot tonnage today / 50% multiple-voyage parcel in 10 days).
+            Forecast reliability indicator is at {forecast.confidenceScore}%. Consider hedging with a split fixture (50% spot tonnage today / 50% multiple-voyage parcel in 10 days).
           </div>
         </div>
       )}

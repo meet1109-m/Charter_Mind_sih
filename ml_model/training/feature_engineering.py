@@ -1,9 +1,9 @@
 """
 Feature Engineering Module for Baltic Dry Index (BDI) Freight Forecasting.
-Ensures strictly chronological, non-leaking feature transformations.
+Ensures strictly chronological, non-leaking feature transformations with exogenous bunker prices.
 """
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import numpy as np
 import pandas as pd
 
@@ -19,6 +19,11 @@ FEATURE_COLUMNS: List[str] = [
     "rolling_std_6",
     "momentum_3",
     "pct_change_1",
+    "bunker_lag_1",
+    "bunker_lag_2",
+    "bunker_rolling_mean_3",
+    "bunker_rolling_mean_6",
+    "bunker_pct_change_1",
     "month",
     "quarter",
     "sin_month",
@@ -29,10 +34,12 @@ TARGET_COLUMN = "Price"
 
 
 def create_time_series_features(
-    df: pd.DataFrame, target_col: str = TARGET_COLUMN
+    df: pd.DataFrame,
+    df_bunker: Optional[pd.DataFrame] = None,
+    target_col: str = TARGET_COLUMN,
 ) -> pd.DataFrame:
     """
-    Constructs time-series lag, rolling statistics, and seasonal features.
+    Constructs time-series lag, rolling statistics, exogenous bunker fuel features, and seasonal harmonics.
 
     CRITICAL ANTI-LEAKAGE RULE:
     All rolling statistics are computed on shifted series (lag 1) so that
@@ -69,7 +76,32 @@ def create_time_series_features(
     df["momentum_3"] = (df["lag_1"] - df["lag_3"]) / (df["lag_3"] + 1e-6)
     df["pct_change_1"] = (df["lag_1"] - df["lag_2"]) / (df["lag_2"] + 1e-6)
 
-    # 4. Seasonal & Calendar Features
+    # 4. Exogenous Bunker Fuel Price Features
+    if df_bunker is not None and not df_bunker.empty:
+        bunker = df_bunker.copy()
+        date_col = next((c for c in bunker.columns if "date" in c.lower()), bunker.columns[0])
+        price_col = next((c for c in bunker.columns if "price" in c.lower() or "vlsfo" in c.lower()), bunker.columns[1])
+        bunker[date_col] = pd.to_datetime(bunker[date_col])
+        bunker["year_month"] = bunker[date_col].dt.strftime("%Y-%m")
+        df["year_month"] = df["Date"].dt.strftime("%Y-%m") if "Date" in df.columns else ""
+        
+        merged_bunker = pd.merge(df, bunker[["year_month", price_col]], on="year_month", how="left")
+        bunker_series = merged_bunker[price_col].bfill().ffill()
+    elif "bunker_price" in df.columns:
+        bunker_series = df["bunker_price"].bfill().ffill()
+    else:
+        # Benchmark Singapore VLSFO price default (~550.0 USD/MT)
+        bunker_series = pd.Series([550.0] * len(df))
+
+    # Anti-leakage shifted bunker features
+    shifted_bunker = bunker_series.shift(1)
+    df["bunker_lag_1"] = shifted_bunker
+    df["bunker_lag_2"] = bunker_series.shift(2)
+    df["bunker_rolling_mean_3"] = shifted_bunker.rolling(window=3, min_periods=1).mean()
+    df["bunker_rolling_mean_6"] = shifted_bunker.rolling(window=6, min_periods=1).mean()
+    df["bunker_pct_change_1"] = (df["bunker_lag_1"] - df["bunker_lag_2"]) / (df["bunker_lag_2"] + 1e-6)
+
+    # 5. Seasonal & Calendar Features
     if "Date" in df.columns:
         month = df["Date"].dt.month
         quarter = df["Date"].dt.quarter

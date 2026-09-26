@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,6 +49,100 @@ DEFAULT_SEED_ALERTS = [
         "action_required": False,
     },
 ]
+
+
+async def check_and_create_operational_alerts(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    risk_scores: Optional[Any] = None,
+    idle_hours: Optional[float] = None,
+    port_name: Optional[str] = None,
+    origin_country: Optional[str] = None,
+    cargo_type: Optional[str] = None,
+) -> List[Alert]:
+    """
+    Evaluates scenario metrics and automatically generates an operational Alert row when:
+    1. The risk bucket is 'High' or 'Critical'
+    2. Expected pre-berthing idle waiting hours exceed 48.0 hours
+    
+    Prevents duplicate alerts if an active (undismissed) alert for that exact condition already exists.
+    """
+    created_alerts: List[Alert] = []
+
+    # 1. Evaluate Risk Bucket Thresholds ('High' or 'Critical')
+    if risk_scores is not None:
+        bucket = getattr(risk_scores, "bucket", None)
+        overall_score = getattr(risk_scores, "overall_score", 0.0)
+        primary_driver = getattr(risk_scores, "primary_driver", "Voyage Risk")
+        summary_sentence = getattr(risk_scores, "summary_sentence", "")
+
+        if bucket in ["High", "Critical"]:
+            alert_type = "danger" if bucket == "Critical" else "warning"
+            port_label = port_name or "Discharge Port"
+            title = f"{bucket} Maritime Risk Alert - {port_label}"
+            impact_metric = f"Risk Score: {overall_score}/100 ({bucket})"
+            message = (
+                summary_sentence
+                or f"Voyage scenario evaluation triggered an elevated {bucket} risk alert driven by {primary_driver}."
+            )
+
+            # Check if an undismissed alert for this exact condition/title already exists for user
+            stmt = select(Alert).where(
+                Alert.user_id == user_id,
+                Alert.is_dismissed == False,
+                Alert.title == title,
+            )
+            existing = (await db.execute(stmt)).scalar_one_or_none()
+            if not existing:
+                new_alert = Alert(
+                    user_id=user_id,
+                    type=alert_type,
+                    title=title,
+                    message=message,
+                    impact_metric=impact_metric,
+                    action_required=True,
+                    is_dismissed=False,
+                )
+                db.add(new_alert)
+                created_alerts.append(new_alert)
+
+    # 2. Evaluate Pre-berthing Idle Waiting Hours Threshold (> 48.0 hours)
+    if idle_hours is not None and idle_hours > 48.0:
+        port_label = port_name or "Anchorage"
+        title = f"Critical Berth Delay Advisory - {port_label}"
+        alert_type = "danger" if idle_hours >= 72.0 else "warning"
+        impact_metric = f"+{idle_hours:.1f}h idle wait"
+        message = (
+            f"Projected pre-berthing wait time at {port_label} has reached {idle_hours:.1f} hours, "
+            f"exceeding the 48.0-hour demurrage mitigation threshold."
+        )
+
+        stmt = select(Alert).where(
+            Alert.user_id == user_id,
+            Alert.is_dismissed == False,
+            Alert.title == title,
+        )
+        existing = (await db.execute(stmt)).scalar_one_or_none()
+        if not existing:
+            new_alert = Alert(
+                user_id=user_id,
+                type=alert_type,
+                title=title,
+                message=message,
+                impact_metric=impact_metric,
+                action_required=True,
+                is_dismissed=False,
+            )
+            db.add(new_alert)
+            created_alerts.append(new_alert)
+
+    if created_alerts:
+        await db.commit()
+        for a in created_alerts:
+            await db.refresh(a)
+
+    return created_alerts
+
 
 
 @router.get(

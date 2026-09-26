@@ -454,6 +454,12 @@ export function mapForecastResult(rawForecast: any, fallbackRoute: string = '', 
           historical: pt.historical !== undefined && pt.historical !== null ? Number(pt.historical) : undefined,
         }))
       : [],
+    historicalBdi: Array.isArray(rawForecast.historical_bdi || rawForecast.historicalBdi)
+      ? (rawForecast.historical_bdi || rawForecast.historicalBdi).map((pt: any) => ({
+          date: String(pt.date || ''),
+          bdi: Number(pt.bdi ?? pt.Price ?? 0),
+        }))
+      : [],
     featureContributions: Array.isArray(rawForecast.feature_contributions || rawForecast.featureContributions)
       ? (rawForecast.feature_contributions || rawForecast.featureContributions).map((fc: any) => ({
           factor: fc.factor,
