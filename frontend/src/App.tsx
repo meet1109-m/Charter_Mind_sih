@@ -55,7 +55,7 @@ const MainAppContent: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#F0F4F8] flex text-[#101828] overflow-x-hidden">
+    <div className="relative min-h-screen bg-[#F0F4F8] flex text-[#101828] overflow-x-clip">
       {/* ========================================================================= */}
       {/* 1. GLOBAL MARITIME PORT & CARGO VESSEL BACKGROUND                         */}
       {/* Fixed behind application, visible through margins/gutters with light wash */}
@@ -92,7 +92,7 @@ const MainAppContent: React.FC = () => {
         <Header onToggleMobileMenu={() => setMobileOpen(true)} />
 
         {/* Dynamic Page Container with solid cards */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
           {/* AI Generating Loading Overlay in Solid White Card */}
           {isGenerating ? (
             <div className="h-96 flex flex-col items-center justify-center text-center p-8 bg-white rounded-[20px] border border-slate-200/80 shadow-md">

@@ -85,8 +85,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
 
   const currentInfo = tabTitles[activeTab] || tabTitles.dashboard;
 
+  const activeAlertsCount = (alerts || []).filter((a: any) => !a.dismissed).length;
+
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md shadow-xs border-b border-slate-200 px-4 sm:px-8 py-3.5 flex items-center justify-between transition-all">
+    <header className="sticky top-0 z-50 bg-white shadow-xs border-b border-slate-200 px-4 sm:px-8 py-3.5 flex items-center justify-between transition-all">
       {/* Left: Mobile Menu & Page Title */}
       <div className="flex items-center gap-3 sm:gap-4 min-w-0">
         <button
@@ -161,9 +163,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           aria-label="View alerts and risks"
         >
           <Bell className="w-5 h-5 text-[#334155]" />
-          {alerts.length > 0 && (
+          {activeAlertsCount > 0 && (
             <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-[#EB1515] text-white text-[10px] font-bold rounded-full flex items-center justify-center font-mono-data border-2 border-white shadow-xs">
-              {alerts.length > 99 ? '99+' : alerts.length}
+              {activeAlertsCount > 99 ? '99+' : activeAlertsCount}
             </span>
           )}
         </button>

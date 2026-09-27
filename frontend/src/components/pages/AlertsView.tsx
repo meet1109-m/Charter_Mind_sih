@@ -1,8 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useCharter } from '../../context/CharterContext';
 import { IconChip } from '../common/IconChip';
-import { getAlerts, dismissAlert as apiDismissAlert } from '../../utils/api';
-import { AlertItem } from '../../types';
 import {
   Bell,
   AlertTriangle,
@@ -11,58 +9,16 @@ import {
   Trash2,
   Sparkles,
   ArrowRight,
-  Loader2,
 } from 'lucide-react';
 
 export const AlertsView: React.FC = () => {
-  const { alerts: contextAlerts, dismissAlert: contextDismissAlert, setActiveTab } = useCharter();
-  const [alerts, setAlerts] = useState<AlertItem[]>(contextAlerts);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const { alerts, dismissAlert, setActiveTab } = useCharter();
 
-  // Fetch real-time alerts from FastAPI backend on mount
-  useEffect(() => {
-    let mounted = true;
-    const fetchApiAlerts = async () => {
-      try {
-        setIsLoading(true);
-        const data = await getAlerts();
-        if (mounted && Array.isArray(data) && data.length > 0) {
-          const mapped: AlertItem[] = data.map((a: any) => ({
-            id: a.id,
-            type: a.type || 'info',
-            title: a.title,
-            message: a.message,
-            timestamp: a.created_at ? new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live',
-            impactMetric: a.impact_metric || undefined,
-            actionRequired: !!a.action_required,
-          }));
-          setAlerts(mapped);
-        }
-      } catch (err) {
-        console.warn('[AlertsView] Could not load alerts from backend, using default live feed:', err);
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    };
-
-    fetchApiAlerts();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const handleDismiss = async (id: string) => {
-    // 1. Optimistic UI update
-    setAlerts((prev) => prev.filter((a) => a.id !== id));
-    contextDismissAlert(id);
-
-    // 2. Call backend dismiss endpoint
-    try {
-      await apiDismissAlert(id);
-    } catch (err) {
-      console.warn('[AlertsView] Could not dismiss alert on backend:', err);
-    }
+  const handleDismiss = (id: string) => {
+    dismissAlert(id);
   };
+
+  const activeAlertsCount = (alerts || []).filter((a: any) => !a.dismissed).length;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -76,8 +32,7 @@ export const AlertsView: React.FC = () => {
 
         <div className="flex items-center gap-3">
           <div className="text-xs font-mono-data text-[#101828] bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200/80 flex items-center gap-1.5">
-            {isLoading && <Loader2 className="w-3 h-3 animate-spin text-[#0B5D63]" />}
-            <span>Active: <strong className="text-[#EB1515]">{alerts.length} Advisories</strong></span>
+            <span>Active: <strong className="text-[#EB1515]">{activeAlertsCount} Advisories</strong></span>
           </div>
           <button
             type="button"

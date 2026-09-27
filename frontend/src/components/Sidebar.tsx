@@ -32,7 +32,21 @@ interface NavItemDef {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) => {
-  const { activeTab, setActiveTab, alerts, cargoRequest, user, logout } = useCharter();
+  const { activeTab, setActiveTab, alerts, riskScores, cargoRequest, user, logout } = useCharter();
+
+  // 1. Dynamic active alerts count (excluding dismissed alerts)
+  const activeAlertsCount = (alerts || []).filter((a: any) => !a.dismissed).length;
+
+  // 2. Dynamic high/critical risk factors count (sub-scores >= 70)
+  const highRiskCount = riskScores
+    ? [
+        riskScores.marketRisk,
+        riskScores.portRisk,
+        riskScores.weatherRisk,
+        riskScores.vesselRisk,
+        riskScores.commodityRisk,
+      ].filter((score) => typeof score === 'number' && score >= 70).length
+    : 0;
 
   const navItems: NavItemDef[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" strokeWidth={2.25} /> },
@@ -41,14 +55,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
     { id: 'vessel-optimizer', label: 'Vessel Optimizer', icon: <Ship className="w-5 h-5" strokeWidth={2.25} /> },
     { id: 'port-intelligence', label: 'Port Intelligence', icon: <Anchor className="w-5 h-5" strokeWidth={2.25} /> },
     { id: 'cost-idle', label: 'Cost & Idle', icon: <Calculator className="w-5 h-5" strokeWidth={2.25} /> },
-    { id: 'risk-engine', label: 'Risk Engine', icon: <ShieldAlert className="w-5 h-5" strokeWidth={2.25} /> },
+    {
+      id: 'risk-engine',
+      label: 'Risk Engine',
+      icon: <ShieldAlert className="w-5 h-5" strokeWidth={2.25} />,
+      badge: highRiskCount > 0 ? String(highRiskCount) : undefined,
+    },
     { id: 'what-if', label: 'What-If Simulator', icon: <Sliders className="w-5 h-5" strokeWidth={2.25} /> },
     { id: 'contract-advisor', label: 'Contract Advisor', icon: <FileCheck className="w-5 h-5" strokeWidth={2.25} /> },
     {
       id: 'alerts',
       label: 'Alerts & Risks',
       icon: <Bell className="w-5 h-5" strokeWidth={2.25} />,
-      badge: alerts.length > 0 ? (alerts.length > 99 ? '99+' : String(alerts.length)) : undefined,
+      badge: activeAlertsCount > 0 ? (activeAlertsCount > 99 ? '99+' : String(activeAlertsCount)) : undefined,
     },
     { id: 'reports', label: 'Decision Reports', icon: <FileText className="w-5 h-5" strokeWidth={2.25} /> },
   ];
@@ -60,18 +79,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
 
   return (
     <>
-      {/* Mobile Backdrop - No blur as per specs */}
+      {/* Mobile Backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-[#101828]/60 lg:hidden transition-opacity"
+          className="fixed inset-0 z-50 bg-[#101828]/60 lg:hidden transition-opacity"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Sidebar Container: Crisp White Maritime Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-68 bg-white/95 backdrop-blur-md border-r border-slate-200 shadow-sm flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed top-0 bottom-0 left-0 z-50 lg:z-40 w-68 bg-white border-r border-slate-200 shadow-sm flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+          mobileOpen ? 'translate-x-0 z-[60]' : '-translate-x-full'
         }`}
       >
         {/* Brand Logo Header */}
@@ -132,6 +151,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, setMobileOpen }) =
                         ? 'bg-white/25 text-white'
                         : item.id === 'alerts'
                         ? 'bg-[#EF4444] text-white'
+                        : item.id === 'risk-engine'
+                        ? 'bg-[#F97316] text-white'
                         : 'bg-slate-200/80 text-[#475467] border border-slate-200'
                     }`}
                   >

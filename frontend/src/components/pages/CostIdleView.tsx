@@ -1,5 +1,6 @@
 import React from 'react';
 import { useCharter } from '../../context/CharterContext';
+import { VESSEL_SPECS, VesselClassId } from '../../types';
 import { IconChip } from '../common/IconChip';
 import {
   formatFreightRate,
@@ -14,6 +15,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Sparkles,
+  Ship,
 } from 'lucide-react';
 
 export const CostIdleView: React.FC = () => {
@@ -22,6 +24,7 @@ export const CostIdleView: React.FC = () => {
     idlePrediction,
     cargoRequest,
     selectedVessel,
+    setSelectedVesselId,
     selectedPort,
     currencyUnit,
   } = useCharter();
@@ -30,7 +33,7 @@ export const CostIdleView: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Top Description & Context Pill */}
+      {/* Top Description & Context Pill with Vessel Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-[20px] bg-white border border-slate-200/80 shadow-sm">
         <div>
           <p className="text-xs sm:text-sm text-[#2B3342] font-sans">
@@ -38,11 +41,32 @@ export const CostIdleView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200/80 text-xs font-mono-data text-[#101828] shrink-0">
-          <span className="text-[#2B3342]">Target:</span>
-          <span className="font-bold text-[#101828]">
-            {cargoRequest.cargoQuantity.toLocaleString()} MT on {selectedVessel.name}
-          </span>
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200/80 text-xs font-mono-data text-[#101828]">
+            <span className="text-[#2B3342]">Parcel:</span>
+            <span className="font-bold text-[#101828]">
+              {cargoRequest.cargoQuantity.toLocaleString()} MT {cargoRequest.cargoType}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200/80">
+            <Ship className="w-4 h-4 text-[#0EA5E9]" />
+            <label htmlFor="cost-vessel-select" className="text-xs text-[#2B3342] font-bold font-mono-data">
+              Vessel:
+            </label>
+            <select
+              id="cost-vessel-select"
+              value={selectedVessel.id}
+              onChange={(e) => setSelectedVesselId(e.target.value as VesselClassId)}
+              className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-[#101828] text-xs font-bold font-mono-data focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] outline-hidden cursor-pointer shadow-2xs"
+            >
+              {Object.values(VESSEL_SPECS).map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name} ({v.capacityMin / 1000}k–{v.capacityMax / 1000}k DWT · {v.draft}m draft)
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

@@ -529,6 +529,9 @@ export const CharterProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const dismissAlert = (id: string) => {
     setAlerts((prev) => prev.filter((a) => a.id !== id));
+    apiDismissAlert(id).catch((err) => {
+      console.warn('[CharterContext] Could not dismiss alert on backend:', err);
+    });
   };
 
   const generateRecommendation = (updatedRequest?: CargoRequest) => {
