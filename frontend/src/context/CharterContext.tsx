@@ -24,6 +24,7 @@ import {
   fetchQuickForecast,
   evaluateVoyage,
   VoyageEvaluationPayload,
+  dismissAlert as apiDismissAlert,
 } from '../utils/api';
 import {
   CargoRequest,
