@@ -5,6 +5,7 @@ uvicorn[standard]>=0.30.0
 # Settings & Validation (Pydantic v2)
 pydantic>=2.7.0
 pydantic-settings>=2.2.0
+email-validator>=2.1.0
 
 # Database & ORM (Async SQLAlchemy 2.x, PostgreSQL & SQLite)
 sqlalchemy>=2.0.30

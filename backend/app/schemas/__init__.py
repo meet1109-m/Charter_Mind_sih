@@ -16,6 +16,7 @@ from app.schemas.contract import (
     ContractComparisonResult,
     ContractStrategy,
 )
+
 from app.schemas.forecast import (
     CharterRecommendation,
     FeatureContribution,
