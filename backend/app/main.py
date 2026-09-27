@@ -12,6 +12,7 @@ from app.routers import (
     alerts_router,
     auth_router,
     cargo_router,
+    chatbot_router,
     contract_router,
     forecast_router,
     port_router,
@@ -30,6 +31,7 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)-7s | %(name)s:%(lineno)d - %(message)s",
 )
 logger = logging.getLogger("uvicorn.error")
+# Reload trigger for chatbot router integration
 
 
 # 1. Modern FastAPI Lifespan Context Manager (Startup & Graceful Shutdown)
@@ -166,6 +168,7 @@ app.include_router(contract_router, prefix=prefix, tags=["Contract Advisor"])
 app.include_router(simulator_router, prefix=prefix, tags=["What-If Simulator"])
 app.include_router(alerts_router, prefix=prefix, tags=["Alerts"])
 app.include_router(reports_router, prefix=prefix, tags=["Reports"])
+app.include_router(chatbot_router, prefix=prefix, tags=["AI Chatbot"])
 
 # Dev / Admin Seed Router (only if DEBUG=True)
 if settings.DEBUG:

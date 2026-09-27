@@ -15,6 +15,7 @@ import { AlertsView } from './components/pages/AlertsView';
 import { ReportsView } from './components/pages/ReportsView';
 import { CharterMindLogo } from './components/common/CharterMindLogo';
 import { AuthView } from './components/auth/AuthView';
+import { ChatbotWidget } from './components/ChatbotWidget';
 
 const MainAppContent: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -22,7 +23,12 @@ const MainAppContent: React.FC = () => {
 
   // If user is not authenticated, render the premium Maritime Authentication Page
   if (!isAuthenticated) {
-    return <AuthView />;
+    return (
+      <>
+        <AuthView />
+        <ChatbotWidget />
+      </>
+    );
   }
 
   const renderActiveView = () => {
@@ -113,6 +119,9 @@ const MainAppContent: React.FC = () => {
           )}
         </main>
       </div>
+
+      {/* Floating Maritime AI Chatbot Widget */}
+      <ChatbotWidget />
     </div>
   );
 

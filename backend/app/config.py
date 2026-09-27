@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     FIREBASE_SERVICE_ACCOUNT_PATH: str = "serviceAccount.json"
     FIREBASE_SERVICE_ACCOUNT_JSON: Optional[str] = None
 
+    # Gemini AI Configuration
+    GEMINI_API_KEY: Optional[str] = None
+
     # CORS Allowed Origins (Comma-separated string)
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
 

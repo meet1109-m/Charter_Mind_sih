@@ -1,6 +1,7 @@
 from app.routers.alerts import router as alerts_router
 from app.routers.auth import router as auth_router
 from app.routers.cargo import router as cargo_router
+from app.routers.chatbot import router as chatbot_router
 from app.routers.contract import router as contract_router
 from app.routers.forecast import router as forecast_router
 from app.routers.port import router as port_router
@@ -14,6 +15,7 @@ from app.routers.voyage import router as voyage_router
 __all__ = [
     "auth_router",
     "cargo_router",
+    "chatbot_router",
     "voyage_router",
     "forecast_router",
     "vessel_router",

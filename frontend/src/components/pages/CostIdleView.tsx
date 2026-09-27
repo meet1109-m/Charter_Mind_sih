@@ -33,40 +33,56 @@ export const CostIdleView: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Top Description & Context Pill with Vessel Selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-[20px] bg-white border border-slate-200/80 shadow-sm">
-        <div>
+      {/* Top Banner with Active Route Info & Sleek Vessel Class Switcher */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-4 sm:p-5 rounded-[20px] bg-white border border-slate-200/80 shadow-sm">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#0B5D63] font-mono-data bg-[#0B5D63]/10 px-2.5 py-0.5 rounded-md">
+              Voyage Economics Engine
+            </span>
+            <span className="text-xs text-[#64748B] font-mono-data font-semibold">
+              {cargoRequest.origin} → {selectedPort.name} ({cargoRequest.cargoQuantity.toLocaleString()} MT {cargoRequest.cargoType})
+            </span>
+          </div>
           <p className="text-xs sm:text-sm text-[#2B3342] font-sans">
-            Complete cost modeling including ocean freight, port tariffs, stevedoring handling, and quantified idle exposure.
+            Itemized cost accounting across ocean freight rates, port tariffs, stevedoring handling, and quantified demurrage idle exposure.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200/80 text-xs font-mono-data text-[#101828]">
-            <span className="text-[#2B3342]">Parcel:</span>
-            <span className="font-bold text-[#101828]">
-              {cargoRequest.cargoQuantity.toLocaleString()} MT {cargoRequest.cargoType}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200/80">
-            <Ship className="w-4 h-4 text-[#0EA5E9]" />
-            <label htmlFor="cost-vessel-select" className="text-xs text-[#2B3342] font-bold font-mono-data">
-              Vessel:
-            </label>
-            <select
-              id="cost-vessel-select"
-              value={selectedVessel.id}
-              onChange={(e) => setSelectedVesselId(e.target.value as VesselClassId)}
-              className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-[#101828] text-xs font-bold font-mono-data focus:border-[#0EA5E9] focus:ring-1 focus:ring-[#0EA5E9] outline-hidden cursor-pointer shadow-2xs"
-            >
-              {Object.values(VESSEL_SPECS).map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name} ({v.capacityMin / 1000}k–{v.capacityMax / 1000}k DWT · {v.draft}m draft)
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Segmented Interactive Vessel Switcher */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 shrink-0">
+          {Object.values(VESSEL_SPECS).map((v) => {
+            const isSelected = selectedVessel.id === v.id;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setSelectedVesselId(v.id)}
+                className={`flex-1 sm:flex-initial flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs transition-all duration-200 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9] ${
+                  isSelected
+                    ? 'bg-[#101828] text-white shadow-xs font-bold'
+                    : 'text-[#475467] hover:text-[#101828] hover:bg-white/80 font-medium'
+                }`}
+              >
+                <Ship
+                  className={`w-4 h-4 shrink-0 transition-colors ${
+                    isSelected ? 'text-[#0EA5E9]' : 'text-[#64748B]'
+                  }`}
+                  strokeWidth={2.25}
+                />
+                <div className="leading-tight">
+                  <div className="font-heading font-bold text-xs">{v.name.split(' ')[0]}</div>
+                  <div
+                    className={`text-[10px] font-mono-data ${
+                      isSelected ? 'text-slate-300 font-semibold' : 'text-[#64748B]'
+                    }`}
+                  >
+                    {Math.round(v.dwtMin / 1000)}k–{Math.round(v.dwtMax / 1000)}k DWT
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 

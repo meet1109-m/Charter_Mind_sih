@@ -701,8 +701,39 @@ export function generateForecast(
   }
   const startRate = forecastVal;
 
-  // Genuine model-derived future projections from Day 0 (today) up to horizon days
-  for (let i = 0; i <= horizon; i++) {
+  // 30 days history
+  const pastDays = 30;
+  let histVal = baseRate * 0.96;
+  for (let i = pastDays; i >= 1; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const drift = (Math.sin(i / 6) * 0.22) + ((Math.sin(i / 3) - 0.2) * 0.15);
+    histVal = Math.max(5, +(histVal + drift).toFixed(2));
+    points.push({
+      date: d.toISOString().split('T')[0],
+      dayIndex: -i,
+      isForecast: false,
+      predicted: histVal,
+      historical: histVal,
+      lowerBound: histVal,
+      upperBound: histVal,
+    });
+  }
+
+  // Day 0 anchor (Today)
+  forecastVal = startRate;
+  points.push({
+    date: today.toISOString().split('T')[0],
+    dayIndex: 0,
+    isForecast: true,
+    predicted: forecastVal,
+    historical: forecastVal,
+    lowerBound: forecastVal,
+    upperBound: forecastVal,
+  });
+
+  // Future points up to horizon
+  for (let i = 1; i <= horizon; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() + i);
     const futureDrift = (Math.cos(i / 8) * 0.22) + 0.07;
@@ -716,6 +747,7 @@ export function generateForecast(
       dayIndex: i,
       isForecast: true,
       predicted: forecastVal,
+      historical: null,
       lowerBound: Math.max(5, lower),
       upperBound: upper,
     });
